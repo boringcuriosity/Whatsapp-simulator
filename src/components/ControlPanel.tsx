@@ -706,11 +706,12 @@ const ControlPanel = ({
     "delay": 1000
   },
   {
-    "text": "Share consent ↗",
+    "text": "Share consent",
     "sender": "them",
     "type": "button",
     "isBusinessMessage": true,
-    "delay": 0
+    "delay": 0,
+    "link": "#"
   }
 ]`);
 

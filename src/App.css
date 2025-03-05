@@ -5,6 +5,18 @@
   text-align: center;
 }
 
+:root {
+  --whatsapp-green: #25D366;
+  --whatsapp-teal: #128C7E;
+  --whatsapp-blue: #34B7F1;
+  --whatsapp-light-green: #DCF8C6;
+  --whatsapp-header: #075E54;
+  --whatsapp-chat-bg: #E5DDD5;
+  --border-color: #E2E2E2;
+  --text-primary: #333333;
+  --text-secondary: #667781;
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;

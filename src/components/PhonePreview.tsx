@@ -19,7 +19,7 @@ const PhoneFrame = styled.div`
   height: 667px;
   background-color: #111;
   border-radius: 40px;
-  padding: 15px;
+  padding: 8px;  /* Reduced from 15px to 8px */
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   position: relative;
   overflow: hidden;
@@ -29,7 +29,7 @@ const PhoneScreen = styled.div`
   width: 100%;
   height: 100%;
   background-color: white;
-  border-radius: 30px;
+  border-radius: 34px;  /* Increased from 30px to 34px to match the reduced padding */
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -46,12 +46,15 @@ const ChatHeader = styled.div`
 
 const BackButton = styled.div`
   margin-right: 10px;
-  font-size: 20px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   
-  &::before {
-    content: '←';
+  img {
+    width: 18px;
+    height: 18px;
   }
 `
 
@@ -82,11 +85,16 @@ const HeaderIcons = styled.div`
   gap: 15px;
   
   & > div {
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+  
+  img {
+    width: 18px;
+    height: 18px;
   }
 `
 
@@ -104,11 +112,17 @@ const ChatBody = styled.div`
 const MessageBubble = styled.div<{ sender: 'me' | 'them', isNew?: boolean, isBusinessMessage?: boolean, isClickable?: boolean }>`
   max-width: 70%;
   padding: 8px 12px;
-  border-radius: 8px;
   position: relative;
   word-wrap: break-word;
   align-self: ${props => props.sender === 'me' ? 'flex-end' : 'flex-start'};
   background-color: ${props => props.sender === 'me' ? 'var(--whatsapp-light-green)' : 'white'};
+  
+  /* Apply specific border-radius to each corner */
+  border-radius: 8px;
+  ${props => props.sender === 'me' 
+    ? 'border-top-right-radius: 2px;' /* Reduce top-right radius for 'me' messages */
+    : 'border-top-left-radius: 2px;'  /* Reduce top-left radius for 'them' messages */
+  }
   
   ${props => props.isNew && css`
     animation: ${fadeIn} 0.3s ease-out;
@@ -117,19 +131,34 @@ const MessageBubble = styled.div<{ sender: 'me' | 'them', isNew?: boolean, isBus
   &::before {
     content: '';
     position: absolute;
-    top: 0;
-    width: 12px;
-    height: 12px;
+    top: 0px;
+    width: 0;
+    height: 0;
     ${props => props.sender === 'me' 
-      ? 'right: -6px; background: radial-gradient(circle at top left, transparent 70%, var(--whatsapp-light-green) 0);' 
-      : 'left: -6px; background: radial-gradient(circle at top right, transparent 70%, white 0);'
+      ? `
+        right: -8px;
+        border-left: 8px solid var(--whatsapp-light-green);
+        border-bottom: 8px solid transparent;
+      ` 
+      : `
+        left: -8px;
+        border-right: 8px solid white;
+        border-bottom: 8px solid transparent;
+      `
     }
   }
+  
   cursor: ${props => props.isClickable ? 'pointer' : 'default'};
-
   &:hover {
     ${props => props.isClickable && `
       background-color: ${props.sender === 'me' ? '#c8e6c9' : '#f5f5f5'};
+      
+      &::before {
+        ${props.sender === 'me'
+          ? 'border-left-color: #c8e6c9;'
+          : 'border-right-color: #f5f5f5;'
+        }
+      }
     `}
   }
 `
@@ -143,18 +172,6 @@ const ImageMessageBubble = styled(MessageBubble)`
     max-width: 300px;
     border-radius: 4px;
     display: block;
-  }
-`
-
-const ButtonLink = styled.a`
-  text-decoration: none;
-  color: inherit;
-  display: block;
-  width: 100%;
-  height: 100%;
-  
-  &:hover {
-    text-decoration: none;
   }
 `
 
@@ -225,23 +242,23 @@ const EmojiButton = styled.div`
   justify-content: center;
   color: var(--text-secondary);
   
-  &::before {
-    content: '😊';
-    font-size: 20px;
+  img {
+    width: 24px;
+    height: 24px;
   }
 `
 
 const AttachButton = styled.div`
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-secondary);
   
-  &::before {
-    content: '📎';
-    font-size: 20px;
+  img {
+    width: 24px;
+    height: 24px;
   }
 `
 
@@ -260,40 +277,54 @@ const InputField = styled.div`
 `
 
 const MicButton = styled.div`
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--whatsapp-teal);
   
-  &::before {
-    content: '🎤';
-    font-size: 20px;
+  img {
+    width: 32px;
+    height: 32px;
   }
 `
 
 // Business message components
 const BusinessButton = styled.div`
   width: 100%;
-  padding: 12px;
+  padding: 10px; /* Reduced from 12px to 10px to make button height smaller */
   margin: 4px 0;
   background-color: white;
   border-radius: 8px;
   text-align: center;
-  color: var(--whatsapp-blue);
+  color: #128C7E; /* Changed from var(--whatsapp-blue) to #128C7E as requested */
   font-weight: 500;
+  font-size: 13px; /* Added smaller font size */
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   
   &:hover {
     background-color: #f5f5f5;
     transform: translateY(-1px);
   }
-
   &:active {
     transform: translateY(0);
+  }
+`
+
+const UrlIconWrapper = styled.span`
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  
+  img {
+    width: 18px; /* Increased from 14px to 18px to make the icon bigger */
+    height: 18px; /* Increased from 14px to 18px to make the icon bigger */
   }
 `
 
@@ -365,7 +396,7 @@ const PhonePreview = ({ contact, messages }: PhonePreviewProps) => {
                 }}
               >
                 {buttonMsg.text}
-                {buttonMsg.link && ' ↗'}
+                {buttonMsg.link && <UrlIconWrapper><img src="/url icon.svg" alt="Link" /></UrlIconWrapper>}
               </BusinessButton>
             ))}
           </BusinessMessageContainer>
@@ -409,7 +440,6 @@ const PhonePreview = ({ contact, messages }: PhonePreviewProps) => {
             </MessageMeta>
           </>
         );
-
         result.push(
           message.type === 'image' ? (
             <ImageMessageBubble
@@ -454,7 +484,7 @@ const PhonePreview = ({ contact, messages }: PhonePreviewProps) => {
               }}
             >
               {buttonMsg.buttonText || buttonMsg.text}
-              {buttonMsg.link && ' ↗'}
+              {buttonMsg.link && <UrlIconWrapper><img src="/url icon.svg" alt="Link" /></UrlIconWrapper>}
             </BusinessButton>
           ))}
         </BusinessMessageContainer>
@@ -468,16 +498,24 @@ const PhonePreview = ({ contact, messages }: PhonePreviewProps) => {
     <PhoneFrame>
       <PhoneScreen>
         <ChatHeader>
-          <BackButton />
+          <BackButton>
+            <img src="/left arrow icon.svg" alt="Back" />
+          </BackButton>
           <Avatar src={contact.avatar} alt={contact.name} />
           <ContactInfo>
             <ContactName>{contact.name}</ContactName>
             <ContactStatus>{getStatusDisplay()}</ContactStatus>
           </ContactInfo>
           <HeaderIcons>
-            <div>📞</div>
-            <div>📹</div>
-            <div>⋮</div>
+            <div>
+              <img src="/call icon.svg" alt="Call" />
+            </div>
+            <div>
+              <img src="/Business icon.svg" alt="Business" />
+            </div>
+            <div>
+              <img src="/3 dots.svg" alt="More" />
+            </div>
           </HeaderIcons>
         </ChatHeader>
         
@@ -486,10 +524,16 @@ const PhonePreview = ({ contact, messages }: PhonePreviewProps) => {
         </ChatBody>
         
         <ChatFooter>
-          <EmojiButton />
-          <AttachButton />
+          <EmojiButton>
+            <img src="/stickers icon.svg" alt="Stickers" />
+          </EmojiButton>
+          <AttachButton>
+            <img src="/Attach icon.svg" alt="Attach" />
+          </AttachButton>
           <InputField />
-          <MicButton />
+          <MicButton>
+            <img src="/Voice recording icon.svg" alt="Voice Recording" />
+          </MicButton>
         </ChatFooter>
       </PhoneScreen>
     </PhoneFrame>
