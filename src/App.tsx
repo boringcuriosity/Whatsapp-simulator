@@ -96,40 +96,92 @@ function App() {
     avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
     status: 'online',
     lastSeen: new Date()
-  })
+  });
   const [isControlPanelCollapsed, setIsControlPanelCollapsed] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
 
-  const [messages, setMessages] = useState<Message[]>([
+  // Lifted state from ControlPanel
+  const [contactSettingsOpen, setContactSettingsOpen] = useState(false);
+  const [messageType, setMessageType] = useState<'text' | 'business' | 'conversation'>('conversation');
+  const [newTextMessage, setNewTextMessage] = useState({
+    text: '',
+    sender: 'me' as 'me' | 'them'
+  });
+  const [businessMessage, setBusinessMessage] = useState({
+    text: '',
+    options: ['Yes', 'No'],
+    phoneNumber: '+91 9849364734',
+    highlightedText: '',
+    sender: 'them' as 'me' | 'them'
+  });
+  const [conversationFlow, setConversationFlow] = useState(`[
     {
-      id: '1',
-      text: 'Hey there! How are you?',
-      sender: 'them',
-      timestamp: new Date(Date.now() - 1000 * 60 * 15),
-      status: 'read',
-      type: 'text'
+      "text": "Is +91 9849364734 linked to your business bank accounts?",
+      "sender": "them",
+      "isBusinessMessage": true,
+      "delay": 1000
     },
     {
-      id: '2',
-      text: 'I\'m good, thanks! How about you?',
-      sender: 'me',
-      timestamp: new Date(Date.now() - 1000 * 60 * 14),
-      status: 'read',
-      type: 'text'
+      "text": "Yes",
+      "sender": "them",
+      "type": "button",
+      "isBusinessMessage": true,
+      "delay": 0
     },
     {
-      id: '3',
-      text: 'I\'m doing well. Just wanted to check in.',
-      sender: 'them',
-      timestamp: new Date(Date.now() - 1000 * 60 * 10),
-      status: 'read',
-      type: 'text'
+      "text": "No",
+      "sender": "them",
+      "type": "button",
+      "isBusinessMessage": true,
+      "delay": 0
+    },
+    {
+      "text": "Yes",
+      "sender": "me",
+      "delay": 2000
+    },
+    {
+      "text": "We will now take your bank account, PAN & GST details via an RBI licensed Account Aggregator.",
+      "sender": "them",
+      "delay": 1500
+    },
+    {
+      "text": "This will allow us to underwrite you and give you your loan offer!",
+      "sender": "them",
+      "delay": 1000
+    },
+    {
+      "text": "Please click on this link to share consent",
+      "sender": "them",
+      "delay": 1000
+    },
+    {
+      "text": "Share consent",
+      "sender": "them",
+      "type": "button",
+      "isBusinessMessage": true,
+      "delay": 0,
+      "link": "#"
     }
-  ])
+  ]`);
+  const [steps, setSteps] = useState<ConversationStep[]>(() => {
+    try {
+      return JSON.parse(conversationFlow);
+    } catch {
+      return [];
+    }
+  });
 
   // For conversation playback
   const [isPlayingConversation, setIsPlayingConversation] = useState(false);
   const [conversationQueue, setConversationQueue] = useState<ConversationStep[]>([]);
   const [savedConversation, setSavedConversation] = useState<ConversationStep[]>([]);
+
+  // Lift remaining local states from ControlPanel
+  const [showJsonPreview, setShowJsonPreview] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewMessages, setPreviewMessages] = useState<Message[]>([]);
+  const [conversationError, setConversationError] = useState('');
 
   useEffect(() => {
     // Process the next message in the conversation queue
@@ -237,14 +289,19 @@ function App() {
       return;
     }
 
-    // If there's a saved conversation, start it
+    // Clear existing messages when starting a new conversation from the sidebar
+    // Only do this when explicitly starting from scratch, not when resuming
+    setMessages([]);
+
+    // If there's a saved conversation, start it from the beginning
     if (savedConversation.length > 0) {
-      setConversationQueue(savedConversation);
+      // Create a fresh copy of the saved conversation
+      setConversationQueue([...savedConversation]);
       setIsPlayingConversation(true);
       return;
     }
 
-    // If nothing is saved or queued, start with default conversation
+    // Only use default conversation if no saved conversation exists
     const defaultConversation: ConversationStep[] = [
       {
         text: "Is +91 9849364734 linked to your business bank accounts?",
@@ -269,7 +326,8 @@ function App() {
     ];
     
     setSavedConversation(defaultConversation);
-    setConversationQueue(defaultConversation);
+    // Create a fresh copy of the default conversation
+    setConversationQueue([...defaultConversation]);
     setIsPlayingConversation(true);
   };
 
@@ -286,7 +344,7 @@ function App() {
           <ButtonGroup>
             <ToggleButton 
               isCollapsed={isControlPanelCollapsed}
-              onClick={() => setIsControlPanelCollapsed(!isControlPanelCollapsed)}
+              onClick={() => setIsControlPanelCollapsed(false)}
               title="Show message controls"
             >
               <MessageSquarePlus />
@@ -304,7 +362,7 @@ function App() {
           <>
             <ToggleButton 
               isCollapsed={isControlPanelCollapsed}
-              onClick={() => setIsControlPanelCollapsed(!isControlPanelCollapsed)}
+              onClick={() => setIsControlPanelCollapsed(true)}
               title="Hide message controls"
             >
               <MessageSquarePlus />
@@ -318,12 +376,34 @@ function App() {
               onDeleteMessage={deleteMessage}
               onClearMessages={clearAllMessages}
               onStartConversation={startConversation}
+              // Pass down lifted state
+              contactSettingsOpen={contactSettingsOpen}
+              setContactSettingsOpen={setContactSettingsOpen}
+              messageType={messageType}
+              setMessageType={setMessageType}
+              newTextMessage={newTextMessage}
+              setNewTextMessage={setNewTextMessage}
+              businessMessage={businessMessage}
+              setBusinessMessage={setBusinessMessage}
+              conversationFlow={conversationFlow}
+              setConversationFlow={setConversationFlow}
+              steps={steps}
+              setSteps={setSteps}
+              // New lifted state
+              showJsonPreview={showJsonPreview}
+              setShowJsonPreview={setShowJsonPreview}
+              showPreview={showPreview}
+              setShowPreview={setShowPreview}
+              previewMessages={previewMessages}
+              setPreviewMessages={setPreviewMessages}
+              conversationError={conversationError}
+              setConversationError={setConversationError}
             />
           </>
         )}
       </ControlSection>
     </AppContainer>
-  )
+  );
 }
 
-export default App
+export default App;

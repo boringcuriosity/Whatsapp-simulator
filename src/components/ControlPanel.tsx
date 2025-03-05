@@ -637,6 +637,39 @@ interface ControlPanelProps {
   onDeleteMessage: (id: string) => void;
   onClearMessages: () => void;
   onStartConversation: (steps: ConversationStep[]) => void;
+  // New props for lifted state
+  contactSettingsOpen: boolean;
+  setContactSettingsOpen: (open: boolean) => void;
+  messageType: 'text' | 'business' | 'conversation';
+  setMessageType: (type: 'text' | 'business' | 'conversation') => void;
+  newTextMessage: { text: string; sender: 'me' | 'them' };
+  setNewTextMessage: (message: { text: string; sender: 'me' | 'them' }) => void;
+  businessMessage: {
+    text: string;
+    options: string[];
+    phoneNumber: string;
+    highlightedText: string;
+    sender: 'me' | 'them';
+  };
+  setBusinessMessage: (message: {
+    text: string;
+    options: string[];
+    phoneNumber: string;
+    highlightedText: string;
+    sender: 'me' | 'them';
+  }) => void;
+  conversationFlow: string;
+  setConversationFlow: (flow: string) => void;
+  steps: ConversationStep[];
+  setSteps: (steps: ConversationStep[]) => void;
+  showJsonPreview: boolean;
+  setShowJsonPreview: (show: boolean) => void;
+  showPreview: boolean;
+  setShowPreview: (show: boolean) => void;
+  previewMessages: Message[];
+  setPreviewMessages: (messages: Message[]) => void;
+  conversationError: string;
+  setConversationError: (error: string) => void;
 }
 
 const ControlPanel = ({
@@ -647,88 +680,30 @@ const ControlPanel = ({
   onUpdateMessage,
   onDeleteMessage,
   onClearMessages,
-  onStartConversation
+  onStartConversation,
+  // New props
+  contactSettingsOpen,
+  setContactSettingsOpen,
+  messageType,
+  setMessageType,
+  newTextMessage,
+  setNewTextMessage,
+  businessMessage,
+  setBusinessMessage,
+  conversationFlow,
+  setConversationFlow,
+  steps,
+  setSteps,
+  showJsonPreview,
+  setShowJsonPreview,
+  showPreview,
+  setShowPreview,
+  previewMessages,
+  setPreviewMessages,
+  conversationError,
+  setConversationError
 }: ControlPanelProps) => {
-  const [contactSettingsOpen, setContactSettingsOpen] = useState(false);
-  const [messageType, setMessageType] = useState<'text' | 'business' | 'conversation'>('conversation');
-  const [newTextMessage, setNewTextMessage] = useState({
-    text: '',
-    sender: 'me' as 'me' | 'them'
-  });
-  
-  const [businessMessage, setBusinessMessage] = useState({
-    text: '',
-    options: ['Yes', 'No'],
-    phoneNumber: '+91 9849364734',
-    highlightedText: '',
-    sender: 'them' as 'me' | 'them'
-  });
-
-  const [conversationFlow, setConversationFlow] = useState(`[
-  {
-    "text": "Is +91 9849364734 linked to your business bank accounts?",
-    "sender": "them",
-    "isBusinessMessage": true,
-    "delay": 1000
-  },
-  {
-    "text": "Yes",
-    "sender": "them",
-    "type": "button",
-    "isBusinessMessage": true,
-    "delay": 0
-  },
-  {
-    "text": "No",
-    "sender": "them",
-    "type": "button",
-    "isBusinessMessage": true,
-    "delay": 0
-  },
-  {
-    "text": "Yes",
-    "sender": "me",
-    "delay": 2000
-  },
-  {
-    "text": "We will now take your bank account, PAN & GST details via an RBI licensed Account Aggregator.",
-    "sender": "them",
-    "delay": 1500
-  },
-  {
-    "text": "This will allow us to underwrite you and give you your loan offer!",
-    "sender": "them",
-    "delay": 1000
-  },
-  {
-    "text": "Please click on this link to share consent",
-    "sender": "them",
-    "delay": 1000
-  },
-  {
-    "text": "Share consent",
-    "sender": "them",
-    "type": "button",
-    "isBusinessMessage": true,
-    "delay": 0,
-    "link": "#"
-  }
-]`);
-
-  const [conversationError, setConversationError] = useState('');
-
-  const [steps, setSteps] = useState<ConversationStep[]>(() => {
-    try {
-      return JSON.parse(conversationFlow);
-    } catch {
-      return [];
-    }
-  });
-  const [showJsonPreview, setShowJsonPreview] = useState(false);
-
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewMessages, setPreviewMessages] = useState<Message[]>([]);
-
+  // Remove state declarations that have been lifted
   const stepRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   const updateStep = (index: number, updates: Partial<ConversationStep>) => {
