@@ -15,6 +15,15 @@
   padding: 0;
   box-sizing: border-box;
   transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  font-size: 16px;
+  
+  @media (max-width: 768px) {
+    font-size: 14px;
+  }
 }
 
 html, body {
@@ -23,6 +32,12 @@ html, body {
   overflow: hidden;
   margin: 0;
   padding: 0;
+  
+  @media (max-width: 768px) {
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: fixed;
+  }
 }
 
 body {
@@ -31,12 +46,18 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #f0f2f5;
   color: var(--text-primary);
+  touch-action: manipulation;
 }
 
 #root {
   height: 100%;
   width: 100%;
   overflow: hidden;
+  
+  @media (max-width: 768px) {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
 }
 
 button {
@@ -45,13 +66,17 @@ button {
   outline: none;
   background: none;
   font-family: inherit;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 input, textarea {
   font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-/* Ensure proper scrollbar styling */
+/* Optimize scrollbar for mobile */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -68,4 +93,25 @@ input, textarea {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #666;
+}
+
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+}
+
+/* Add momentum scrolling for iOS */
+@supports (-webkit-overflow-scrolling: touch) {
+  .chat-body {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Disable pull-to-refresh on mobile */
+@media (max-width: 768px) {
+  html {
+    overscroll-behavior-y: contain;
+  }
 }

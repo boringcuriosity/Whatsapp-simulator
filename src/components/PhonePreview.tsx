@@ -23,6 +23,14 @@ const PhoneFrame = styled.div`
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   position: relative;
   overflow: hidden;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    height: 100vh;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+  }
 `
 
 const PhoneScreen = styled.div`
@@ -33,6 +41,10 @@ const PhoneScreen = styled.div`
   overflow: hidden;
   display: flex;
   flex-direction: column;
+
+  @media (max-width: 768px) {
+    border-radius: 0;
+  }
 `
 
 const ChatHeader = styled.div`
@@ -42,6 +54,11 @@ const ChatHeader = styled.div`
   display: flex;
   align-items: center;
   height: 60px;
+
+  @media (max-width: 768px) {
+    height: 56px;
+    padding: 8px 16px;
+  }
 `
 
 const BackButton = styled.div`
@@ -107,6 +124,10 @@ const ChatBody = styled.div`
   flex-direction: column;
   gap: 8px;
   background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d9d9d9' fill-opacity='0.4'%3E%3Cpath d='M50 50c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10c0 5.523-4.477 10-10 10s-10-4.477-10-10 4.477-10 10-10zM10 10c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10c0 5.523-4.477 10-10 10S0 25.523 0 20s4.477-10 10-10zm10 8c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8zm40 40c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8z' /%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+
+  @media (max-width: 768px) {
+    padding: 8px;
+  }
 `
 
 const MessageBubble = styled.div<{ sender: 'me' | 'them', isNew?: boolean, isBusinessMessage?: boolean, isClickable?: boolean }>`
@@ -127,6 +148,11 @@ const MessageBubble = styled.div<{ sender: 'me' | 'them', isNew?: boolean, isBus
   ${props => props.isNew && css`
     animation: ${fadeIn} 0.3s ease-out;
   `}
+
+  @media (max-width: 768px) {
+    max-width: 85%;
+    padding: 6px 10px;
+  }
   
   &::before {
     content: '';
@@ -232,6 +258,11 @@ const ChatFooter = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
+
+  @media (max-width: 768px) {
+    padding: 8px 12px;
+    gap: 12px;
+  }
 `
 
 const EmojiButton = styled.div`
@@ -315,6 +346,11 @@ const BusinessButton = styled.div`
   &:active {
     transform: translateY(0);
   }
+
+  @media (max-width: 768px) {
+    padding: 12px;
+    font-size: 14px;
+  }
 `
 
 const UrlIconWrapper = styled.span`
@@ -335,6 +371,10 @@ const BusinessMessageContainer = styled.div`
   max-width: 70%;
   align-self: flex-start;
   margin-bottom: 8px;
+
+  @media (max-width: 768px) {
+    max-width: 85%;
+  }
 `
 
 interface PhonePreviewProps {

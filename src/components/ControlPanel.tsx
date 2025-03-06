@@ -10,12 +10,21 @@ const Container = styled.div`
   gap: 24px;
   height: 100%;
   position: relative; // Added position relative to establish a positioning context
+
+  @media (max-width: 768px) {
+    gap: 16px;
+    padding-bottom: 60px; // Add space for mobile browser bars
+  }
 `
 
 const Section = styled.div`
   display: flex;
   flex-direction: column;
   gap: 16px;
+
+  @media (max-width: 768px) {
+    gap: 12px;
+  }
 `
 
 const SectionTitle = styled.h2`
@@ -25,6 +34,12 @@ const SectionTitle = styled.h2`
   margin-bottom: 8px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border-color);
+
+  @media (max-width: 768px) {
+    font-size: 16px;
+    margin-bottom: 4px;
+    padding-bottom: 4px;
+  }
 `
 
 const FormGroup = styled.div`
@@ -109,6 +124,15 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' | 'l
 const ButtonGroup = styled.div`
   display: flex;
   gap: 8px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 8px;
+    
+    button {
+      width: 100%;
+    }
+  }
 `
 
 const MessageList = styled.div`
@@ -186,12 +210,22 @@ const MessageInputContainer = styled.div`
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background-color: #f9f9f9;
+
+  @media (max-width: 768px) {
+    padding: 12px;
+    gap: 12px;
+  }
 `
 
 const MessageTypeSelector = styled.div`
   display: flex;
   gap: 8px;
   margin-bottom: 8px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 4px;
+  }
 `
 
 const MessageTypeButton = styled.button<{ active: boolean }>`
@@ -206,6 +240,11 @@ const MessageTypeButton = styled.button<{ active: boolean }>`
   
   &:hover {
     opacity: 0.9;
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px;
+    font-size: 15px;
   }
 `
 
@@ -304,6 +343,17 @@ const StepHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+
+    div:last-child {
+      width: 100%;
+      justify-content: space-between;
+    }
+  }
 `
 
 const StepsContainer = styled.div`
@@ -325,6 +375,11 @@ const StepForm = styled(ConversationStepForm)`
   
   &:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px;
+    margin: 0 0 12px 0;
   }
 `
 
@@ -397,6 +452,16 @@ const ActionBar = styled.div`
   margin-top: 16px;
   z-index: 10;
   justify-content: space-between;
+
+  @media (max-width: 768px) {
+    padding: 12px;
+    flex-direction: column;
+    gap: 8px;
+
+    button {
+      width: 100%;
+    }
+  }
 `
 
 const ActionButton = styled(Button)`
@@ -475,6 +540,10 @@ const PreviewOverlay = styled.div<{ show: boolean }>`
   justify-content: center;
   align-items: center;
   z-index: 1000;
+
+  @media (max-width: 768px) {
+    padding: 0;
+  }
 `
 
 const PreviewContainer = styled.div`
@@ -484,6 +553,13 @@ const PreviewContainer = styled.div`
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   max-width: 600px;
   width: 100%;
+
+  @media (max-width: 768px) {
+    height: 100%;
+    padding: 16px;
+    border-radius: 0;
+    overflow-y: auto;
+  }
 `
 
 const StepTypeSelector = styled.div`
@@ -1452,7 +1528,7 @@ const ControlPanel = ({
       <Section>
         <SectionTitle>Message History</SectionTitle>
         {messages.length > 0 ? (
-          <>
+          <div>
             <MessageList>
               {messages.map((message) => (
                 <MessageItem key={message.id} sender={message.sender}>
@@ -1486,7 +1562,7 @@ const ControlPanel = ({
             <Button variant="danger" onClick={onClearMessages}>
               Clear All Messages
             </Button>
-          </>
+          </div>
         ) : (
           <p>No messages yet. Add some messages above.</p>
         )}

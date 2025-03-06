@@ -13,6 +13,8 @@ const AppContainer = styled.div`
   
   @media (max-width: 768px) {
     flex-direction: column;
+    height: auto;
+    min-height: 100vh;
   }
 `
 
@@ -24,6 +26,11 @@ const PreviewSection = styled.div`
   padding: 20px;
   background-color: #f0f2f5;
   overflow: auto;
+
+  @media (max-width: 768px) {
+    padding: 10px;
+    min-height: 100vh;
+  }
 `
 
 const ControlSection = styled.div<{ isCollapsed: boolean }>`
@@ -37,6 +44,13 @@ const ControlSection = styled.div<{ isCollapsed: boolean }>`
   max-height: 100vh;
   transition: all 0.3s ease;
   position: relative;
+
+  @media (max-width: 768px) {
+    min-width: 100%;
+    max-height: none;
+    order: 1;
+    box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.05);
+  }
 `
 
 const ButtonGroup = styled.div`
@@ -83,6 +97,12 @@ const ManualControls = styled.div`
   display: flex;
   gap: 8px;
   z-index: 1000;
+
+  @media (max-width: 768px) {
+    bottom: auto;
+    top: 20px;
+    right: 10px;
+  }
 `
 
 const ArrowButton = styled.button<{ disabled?: boolean }>`
@@ -127,6 +147,12 @@ const PlayPauseButton = styled.button`
   transition: all 0.3s ease;
   z-index: 1000;
   padding: 0;
+
+  @media (max-width: 768px) {
+    bottom: auto;
+    top: 20px;
+    left: 10px;
+  }
 
   img {
     width: 24px;
