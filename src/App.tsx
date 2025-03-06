@@ -99,9 +99,13 @@ const ManualControls = styled.div`
   z-index: 1000;
 
   @media (max-width: 768px) {
-    bottom: auto;
-    top: 20px;
-    right: 10px;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 `
 
@@ -149,9 +153,11 @@ const PlayPauseButton = styled.button`
   padding: 0;
 
   @media (max-width: 768px) {
-    bottom: auto;
-    top: 20px;
-    left: 10px;
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(18, 140, 126, 0.9);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
   img {

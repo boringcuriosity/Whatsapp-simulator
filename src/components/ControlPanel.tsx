@@ -173,6 +173,17 @@ const Collapsible = styled.div`
   border-radius: 8px;
   position: relative;
   margin-bottom: 16px;
+  max-width: 480px;
+  min-width: 380px;
+  align-self: flex-start;
+
+  @media (max-width: 768px) {
+    max-width: 95%;
+    min-width: unset;
+    width: 95%;
+    margin-left: auto;
+    margin-right: auto;
+  }
 `
 
 const CollapsibleHeader = styled.div`
