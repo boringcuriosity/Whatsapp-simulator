@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import styled from 'styled-components'
 import { Copy, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
 import { Message, Contact, MessageStatus, ContactStatus, ConversationStep } from '../types'
