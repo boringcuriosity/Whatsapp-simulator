@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import styled from 'styled-components'
-import { MessageSquarePlus, Play, Pause, ArrowLeft, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 import PhonePreview from './components/PhonePreview'
 import ControlPanel from './components/ControlPanel'
 import { Message, Contact, ConversationStep } from './types'
@@ -49,8 +49,8 @@ const ToggleButton = styled.button<{ isCollapsed: boolean }>`
   position: ${props => props.isCollapsed ? 'static' : 'absolute'};
   top: 20px;
   right: 20px;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--whatsapp-teal);
   border: none;
@@ -59,34 +59,20 @@ const ToggleButton = styled.button<{ isCollapsed: boolean }>`
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   z-index: 10;
   padding: 0;
+  
+  img {
+    width: 20px;
+    height: 20px;
+    transform: rotate(${props => props.isCollapsed ? '0deg' : '180deg'});
+    transition: transform 0.3s ease;
+  }
   
   &:hover {
     transform: scale(1.1);
     background: var(--whatsapp-green);
-  }
-
-  svg {
-    width: 18px;
-    height: 18px;
-    transform: ${props => props.isCollapsed ? 'rotate(0deg)' : 'rotate(45deg)'};
-    transition: transform 0.3s ease;
-  }
-`
-
-const PlayButton = styled(ToggleButton)<{ isPlaying?: boolean }>`
-  margin-top: 8px;
-  background: ${props => props.isPlaying ? 'var(--whatsapp-teal)' : 'var(--whatsapp-green)'};
-  transform: rotate(0deg) !important;
-  
-  svg {
-    transform: rotate(0deg) !important;
-  }
-
-  &:hover {
-    background: ${props => props.isPlaying ? 'var(--whatsapp-green)' : 'var(--whatsapp-teal)'};
   }
 `
 
@@ -125,6 +111,34 @@ const ArrowButton = styled.button<{ disabled?: boolean }>`
   }
 `
 
+const PlayPauseButton = styled.button`
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #128C7E;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  padding: 0;
+
+  img {
+    width: 24px;
+    height: 24px;
+  }
+
+  &:hover {
+    transform: scale(1.1);
+    filter: brightness(1.1);
+  }
+`
+
 function App() {
   const [contact, setContact] = useState<Contact>({
     name: 'John Doe',
@@ -145,13 +159,13 @@ function App() {
   const [businessMessage, setBusinessMessage] = useState({
     text: '',
     options: ['Yes', 'No'],
-    phoneNumber: '+91 9849364734',
+    phoneNumber: '+91 984XXXXX34',
     highlightedText: '',
     sender: 'them' as 'me' | 'them'
   });
   const [conversationFlow, setConversationFlow] = useState(`[
     {
-      "text": "Is +91 9849364734 linked to your business bank accounts?",
+      "text": "Is +91 984XXXXX34 linked to your business bank accounts?",
       "sender": "them",
       "isBusinessMessage": true,
       "delay": 1000
@@ -384,7 +398,7 @@ function App() {
     // Only use default conversation if no saved conversation exists
     const defaultConversation: ConversationStep[] = [
       {
-        text: "Is +91 9849364734 linked to your business bank accounts?",
+        text: "Is +91 984XXXXX34 linked to your business bank accounts?",
         sender: "them",
         isBusinessMessage: true,
         delay: 1000
@@ -473,16 +487,8 @@ function App() {
               onClick={() => setIsControlPanelCollapsed(false)}
               title="Show message controls"
             >
-              <MessageSquarePlus />
+              <img src="/settings icon.svg" alt="Toggle controls" />
             </ToggleButton>
-            <PlayButton
-              isCollapsed={true}
-              isPlaying={isPlayingConversation}
-              onClick={handlePlayConversation}
-              title={isPlayingConversation ? "Pause conversation" : "Start/Resume conversation"}
-            >
-              {isPlayingConversation ? <Pause /> : <Play />}
-            </PlayButton>
           </ButtonGroup>
         ) : (
           <>
@@ -491,7 +497,7 @@ function App() {
               onClick={() => setIsControlPanelCollapsed(true)}
               title="Hide message controls"
             >
-              <MessageSquarePlus />
+              <img src="/settings icon.svg" alt="Toggle controls" />
             </ToggleButton>
             <ControlPanel
               contact={contact}
@@ -528,6 +534,15 @@ function App() {
           </>
         )}
       </ControlSection>
+      <PlayPauseButton
+        onClick={handlePlayConversation}
+        title={isPlayingConversation ? "Pause conversation" : "Start/Resume conversation"}
+      >
+        <img 
+          src={isPlayingConversation ? "/pause icon.svg" : "/play icon.svg"} 
+          alt={isPlayingConversation ? "Pause" : "Play"} 
+        />
+      </PlayPauseButton>
       <ManualControls>
         <ArrowButton 
           onClick={handlePreviousStep}
