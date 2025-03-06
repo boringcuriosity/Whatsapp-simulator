@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import styled from 'styled-components'
-import { MessageSquarePlus, Play, Pause } from 'lucide-react'
+import { MessageSquarePlus, Play, Pause, ArrowLeft, ArrowRight } from 'lucide-react'
 import PhonePreview from './components/PhonePreview'
 import ControlPanel from './components/ControlPanel'
 import { Message, Contact, ConversationStep } from './types'
@@ -87,6 +87,41 @@ const PlayButton = styled(ToggleButton)<{ isPlaying?: boolean }>`
 
   &:hover {
     background: ${props => props.isPlaying ? 'var(--whatsapp-green)' : 'var(--whatsapp-teal)'};
+  }
+`
+
+const ManualControls = styled.div`
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  gap: 8px;
+  z-index: 1000;
+`
+
+const ArrowButton = styled.button<{ disabled?: boolean }>`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--whatsapp-teal);
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: ${props => props.disabled ? 0.5 : 1};
+  pointer-events: ${props => props.disabled ? 'none' : 'auto'};
+
+  &:hover {
+    transform: ${props => props.disabled ? 'none' : 'scale(1.1)'};
+    background: var(--whatsapp-green);
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
   }
 `
 
@@ -183,59 +218,104 @@ function App() {
   const [previewMessages, setPreviewMessages] = useState<Message[]>([]);
   const [conversationError, setConversationError] = useState('');
 
+  const [currentStepIndex, setCurrentStepIndex] = useState(-1);
+
+  // Add a useEffect to automatically update savedConversation when steps change
   useEffect(() => {
-    // Process the next message in the conversation queue
-    if (isPlayingConversation && conversationQueue.length > 0) {
-      const nextStep = conversationQueue[0];
-      const delay = nextStep.delay ?? 1000; // Default delay of 1 second if not specified
-      
-      // Show typing indicator for the sender if it's not a button and it's from "them"
-      if (nextStep.sender === 'them' && nextStep.type !== 'button') {
-        setContact(prev => ({ ...prev, status: 'typing' }));
+    if (steps.length > 0) {
+      setSavedConversation(steps);
+      // If we're already displaying messages, keep them
+      // Otherwise initialize currentStepIndex to -1 to start fresh
+      if (messages.length === 0) {
+        setCurrentStepIndex(-1);
       }
-      
-      const timer = setTimeout(() => {
-        // Reset typing indicator
-        if (nextStep.sender === 'them') {
-          setContact(prev => ({ ...prev, status: 'online' }));
-        }
-        
-        // Format text with highlighted text if needed
-        let formattedText = nextStep.text;
-        if (nextStep.highlightedText) {
-          formattedText = formattedText.replace(
-            nextStep.highlightedText,
-            `*${nextStep.highlightedText}*`
-          );
-        }
-        
-        // Add the message
-        const newMessage: Message = {
-          id: Date.now().toString(),
-          text: formattedText,
-          sender: nextStep.sender,
-          timestamp: new Date(),
-          status: 'sent',
-          type: nextStep.type || 'text',
-          isBusinessMessage: nextStep.isBusinessMessage,
-          buttonText: nextStep.buttonText,
-          link: nextStep.link, // Add the link property
-          imageUrl: nextStep.imageUrl,
-          caption: nextStep.caption
-        };
-        
-        setMessages(prev => [...prev, newMessage]);
-        
-        // Remove this step from the queue
-        setConversationQueue(prev => prev.slice(1));
-      }, delay);
-      
-      return () => clearTimeout(timer);
-    } else if (isPlayingConversation && conversationQueue.length === 0) {
-      // Conversation playback is complete
-      setIsPlayingConversation(false);
     }
-  }, [isPlayingConversation, conversationQueue]);
+  }, [steps]);
+
+  // Add these new functions for manual control
+  const handlePreviousStep = () => {
+    // Allow going back if there are messages
+    if (messages.length === 0) return;
+    
+    // Ensure savedConversation is populated if not already
+    if (savedConversation.length === 0 && steps.length > 0) {
+      setSavedConversation(steps);
+    }
+    
+    // Remove the last message
+    setMessages(prev => prev.slice(0, -1));
+    setCurrentStepIndex(prev => Math.max(-1, prev - 1));
+  };
+
+  const handleNextStep = () => {
+    // If we have steps, use them directly
+    if (steps.length > 0) {
+      // If no messages yet, start with first message
+      if (messages.length === 0) {
+        const firstMessage = steps[0];
+        addMessageImmediately(firstMessage);
+        setCurrentStepIndex(0);
+        return;
+      }
+
+      // If we haven't started yet
+      if (currentStepIndex === -1) {
+        const firstMessage = steps[0];
+        addMessageImmediately(firstMessage);
+        setCurrentStepIndex(0);
+        return;
+      }
+
+      // If we're not at the end
+      if (currentStepIndex < steps.length - 1) {
+        const nextStep = steps[currentStepIndex + 1];
+        addMessageImmediately(nextStep);
+        setCurrentStepIndex(prev => prev + 1);
+      }
+    }
+  };
+
+  // Helper function to add message immediately without delays
+  const addMessageImmediately = (step: ConversationStep) => {
+    // Reset any previous typing indicators
+    if (contact.status === 'typing') {
+      setContact(prev => ({ ...prev, status: 'online' }));
+    }
+
+    // Show typing indicator only briefly for visual feedback
+    if (step.sender === 'them' && step.type !== 'button') {
+      setContact(prev => ({ ...prev, status: 'typing' }));
+      // Reset status after a very short delay
+      setTimeout(() => {
+        setContact(prev => ({ ...prev, status: 'online' }));
+      }, 200);
+    }
+
+    // Format and add the message immediately
+    let formattedText = step.text;
+    if (step.highlightedText) {
+      formattedText = formattedText.replace(
+        step.highlightedText,
+        `*${step.highlightedText}*`
+      );
+    }
+
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      text: formattedText,
+      sender: step.sender,
+      timestamp: new Date(),
+      status: 'sent',
+      type: step.type || 'text',
+      isBusinessMessage: step.isBusinessMessage,
+      buttonText: step.buttonText,
+      link: step.link,
+      imageUrl: step.imageUrl,
+      caption: step.caption
+    };
+
+    setMessages(prev => [...prev, newMessage]);
+  };
 
   const updateContact = (updatedContact: Partial<Contact>) => {
     setContact(prev => ({ ...prev, ...updatedContact }))
@@ -267,13 +347,13 @@ function App() {
     setMessages([])
   }
 
+  // Modified startConversation to handle the current step index properly
   const startConversation = (steps: ConversationStep[]) => {
-    // Save the conversation for later use
     setSavedConversation(steps);
     setIsPlayingConversation(true);
     setConversationQueue(steps);
-    // Don't clear messages when starting new conversation
-    // setMessages([]); - Remove this line
+    setCurrentStepIndex(-1);
+    setMessages([]); // Clear messages when starting new conversation
   }
 
   const handlePlayConversation = () => {
@@ -330,6 +410,52 @@ function App() {
     setConversationQueue([...defaultConversation]);
     setIsPlayingConversation(true);
   };
+
+  // Update useEffect to work better with manual controls
+  useEffect(() => {
+    if (!isPlayingConversation || conversationQueue.length === 0) return;
+
+    const nextStep = conversationQueue[0];
+    const delay = nextStep.delay ?? 1000;
+    
+    if (nextStep.sender === 'them' && nextStep.type !== 'button') {
+      setContact(prev => ({ ...prev, status: 'typing' }));
+    }
+    
+    const timer = setTimeout(() => {
+      if (nextStep.sender === 'them') {
+        setContact(prev => ({ ...prev, status: 'online' }));
+      }
+      
+      let formattedText = nextStep.text;
+      if (nextStep.highlightedText) {
+        formattedText = formattedText.replace(
+          nextStep.highlightedText,
+          `*${nextStep.highlightedText}*`
+        );
+      }
+      
+      const newMessage: Message = {
+        id: Date.now().toString(),
+        text: formattedText,
+        sender: nextStep.sender,
+        timestamp: new Date(),
+        status: 'sent',
+        type: nextStep.type || 'text',
+        isBusinessMessage: nextStep.isBusinessMessage,
+        buttonText: nextStep.buttonText,
+        link: nextStep.link,
+        imageUrl: nextStep.imageUrl,
+        caption: nextStep.caption
+      };
+      
+      setMessages(prev => [...prev, newMessage]);
+      setCurrentStepIndex(prev => prev + 1);
+      setConversationQueue(prev => prev.slice(1));
+    }, delay);
+    
+    return () => clearTimeout(timer);
+  }, [isPlayingConversation, conversationQueue]);
 
   return (
     <AppContainer>
@@ -402,6 +528,25 @@ function App() {
           </>
         )}
       </ControlSection>
+      <ManualControls>
+        <ArrowButton 
+          onClick={handlePreviousStep}
+          disabled={messages.length === 0}
+          title="Previous message"
+        >
+          <ArrowLeft />
+        </ArrowButton>
+        <ArrowButton 
+          onClick={handleNextStep}
+          disabled={
+            steps.length === 0 || // No conversation flow available
+            (currentStepIndex >= steps.length - 1 && messages.length > 0) // At the end of conversation
+          }
+          title="Next message"
+        >
+          <ArrowRight />
+        </ArrowButton>
+      </ManualControls>
     </AppContainer>
   );
 }
