@@ -1,7 +1,7 @@
 import styled, { keyframes, css } from 'styled-components'
 import { format } from 'date-fns'
 import { Message, Contact } from '../types'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const fadeIn = keyframes`
   from {
@@ -324,20 +324,21 @@ const MicButton = styled.div`
 // Business message components
 const BusinessButton = styled.div`
   width: 100%;
-  padding: 10px; /* Reduced from 12px to 10px to make button height smaller */
+  padding: 12px 16px;
   margin: 4px 0;
   background-color: white;
   border-radius: 8px;
   text-align: center;
-  color: #128C7E; /* Changed from var(--whatsapp-blue) to #128C7E as requested */
+  color: #128C7E;
   font-weight: 500;
-  font-size: 13px; /* Added smaller font size */
+  font-size: 14px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   
   &:hover {
     background-color: #f5f5f5;
@@ -377,19 +378,87 @@ const BusinessMessageContainer = styled.div`
   }
 `
 
+const WebViewContainer = styled.div<{ isVisible: boolean }>`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: white;
+  z-index: 10;
+  display: ${props => props.isVisible ? 'flex' : 'none'};
+  flex-direction: column;
+  border-radius: 34px;
+  overflow: hidden;
+  
+  @media (max-width: 768px) {
+    border-radius: 0;
+  }
+`
+
+const WebViewHeader = styled.div`
+  background-color: var(--whatsapp-header);
+  color: white;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  height: 60px;
+
+  @media (max-width: 768px) {
+    height: 56px;
+    padding: 8px 16px;
+  }
+`
+
+const WebViewTitle = styled.div`
+  font-weight: 600;
+  font-size: 16px;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0 10px;
+`
+
+const WebViewIframe = styled.iframe`
+  width: 100%;
+  height: 100%;
+  border: none;
+`
+
 interface PhonePreviewProps {
   contact: Contact;
   messages: Message[];
+  onUpdateMessage: (id: string, updates: Partial<Message>) => void;
 }
 
 const PhonePreview = ({ contact, messages }: PhonePreviewProps) => {
   const chatBodyRef = useRef<HTMLDivElement>(null);
+  const [webViewUrl, setWebViewUrl] = useState<string | null>(null);
+  const [webViewTitle, setWebViewTitle] = useState<string>('');
   
+  // Function to handle opening a link
+  const handleOpenLink = (url: string, title: string = 'Web View', openInNewTab: boolean = false) => {
+    if (openInNewTab || !url.startsWith('http')) {
+      // Always use window.open directly for new tab or non-http links
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      // Use web view only for http(s) links when not opening in new tab
+      setWebViewUrl(url);
+      setWebViewTitle(title);
+    }
+  };
+
   useEffect(() => {
     if (chatBodyRef.current) {
       chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Function to close the web view
+  const handleCloseWebView = () => {
+    setWebViewUrl(null);
+  };
 
   const formatMessageTime = (date: Date) => {
     return format(date, 'HH:mm');
@@ -431,11 +500,16 @@ const PhonePreview = ({ contact, messages }: PhonePreviewProps) => {
                 key={buttonMsg.id}
                 onClick={() => {
                   if (buttonMsg.link) {
-                    window.open(buttonMsg.link, '_blank', 'noopener,noreferrer');
+                    // Use openLinkInWebView property directly
+                    handleOpenLink(
+                      buttonMsg.link, 
+                      buttonMsg.buttonText || buttonMsg.text, 
+                      buttonMsg.openLinkInWebView === false
+                    );
                   }
                 }}
               >
-                {buttonMsg.text}
+                {buttonMsg.buttonText || buttonMsg.text}
                 {buttonMsg.link && <UrlIconWrapper><img src="/url icon.svg" alt="Link" /></UrlIconWrapper>}
               </BusinessButton>
             ))}
@@ -451,6 +525,28 @@ const PhonePreview = ({ contact, messages }: PhonePreviewProps) => {
       if (message.type === 'button' && message.isBusinessMessage) {
         businessGroupSender = message.sender;
         currentBusinessGroup.push(message);
+      } else if (message.type === 'button') {
+        // This is a button but not a business message, render it as a standalone button
+        result.push(
+          <BusinessMessageContainer key={`button-${message.id}`}>
+            <BusinessButton 
+              key={message.id}
+              onClick={() => {
+                if (message.link) {
+                  // Use openLinkInWebView property directly
+                  handleOpenLink(
+                    message.link, 
+                    message.buttonText || message.text, 
+                    message.openLinkInWebView === false
+                  );
+                }
+              }}
+            >
+              {message.buttonText || message.text}
+              {message.link && <UrlIconWrapper><img src="/url icon.svg" alt="Link" /></UrlIconWrapper>}
+            </BusinessButton>
+          </BusinessMessageContainer>
+        );
       } else {
         // Regular message - use dangerouslySetInnerHTML only if message contains asterisks
         // Otherwise, directly render the text
@@ -480,6 +576,8 @@ const PhonePreview = ({ contact, messages }: PhonePreviewProps) => {
             </MessageMeta>
           </>
         );
+        
+        // For regular messages with links
         result.push(
           message.type === 'image' ? (
             <ImageMessageBubble
@@ -499,7 +597,12 @@ const PhonePreview = ({ contact, messages }: PhonePreviewProps) => {
               isClickable={!!message.link}
               onClick={() => {
                 if (message.link) {
-                  window.open(message.link, '_blank', 'noopener,noreferrer');
+                  // Use openLinkInWebView property directly
+                  handleOpenLink(
+                    message.link, 
+                    'Web View', 
+                    message.openLinkInWebView === false
+                  );
                 }
               }}
             >
@@ -519,7 +622,12 @@ const PhonePreview = ({ contact, messages }: PhonePreviewProps) => {
               key={buttonMsg.id}
               onClick={() => {
                 if (buttonMsg.link) {
-                  window.open(buttonMsg.link, '_blank', 'noopener,noreferrer');
+                  // Use openLinkInWebView property directly
+                  handleOpenLink(
+                    buttonMsg.link, 
+                    buttonMsg.buttonText || buttonMsg.text, 
+                    buttonMsg.openLinkInWebView === false
+                  );
                 }
               }}
             >
@@ -575,6 +683,23 @@ const PhonePreview = ({ contact, messages }: PhonePreviewProps) => {
             <img src="/Voice recording icon.svg" alt="Voice Recording" />
           </MicButton>
         </ChatFooter>
+
+        {/* Add WebView Container */}
+        <WebViewContainer isVisible={!!webViewUrl}>
+          <WebViewHeader>
+            <BackButton onClick={handleCloseWebView}>
+              <img src="/left arrow icon.svg" alt="Back" />
+            </BackButton>
+            <WebViewTitle>{webViewTitle}</WebViewTitle>
+          </WebViewHeader>
+          {webViewUrl && (
+            <WebViewIframe 
+              src={webViewUrl} 
+              title="Web View"
+              sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+            />
+          )}
+        </WebViewContainer>
       </PhoneScreen>
     </PhoneFrame>
   );
