@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
 import { Copy, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
 import { Message, Contact, MessageStatus, ContactStatus, ConversationStep } from '../types'
@@ -681,6 +681,67 @@ const RemoveImageButton = styled(IconButton)`
   }
 `
 
+const RadioGroup = styled.div`
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: #f7f7f7;
+  border-radius: 8px;
+  margin-top: 8px;
+`
+
+const StyledRadioLabel = styled.label<{ isSelected: boolean }>`
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  gap: 8px;
+  background: ${props => props.isSelected ? 'white' : 'transparent'};
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid ${props => props.isSelected ? 'var(--whatsapp-teal)' : '#ddd'};
+  
+  &:hover {
+    background: ${props => props.isSelected ? 'white' : '#f0f0f0'};
+  }
+`
+
+const RadioButton = styled.input`
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid ${props => props.checked ? 'var(--whatsapp-teal)' : '#999'};
+  border-radius: 50%;
+  margin: 0;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:checked {
+    border-color: var(--whatsapp-teal);
+    &:after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--whatsapp-teal);
+    }
+  }
+
+  &:hover {
+    border-color: var(--whatsapp-teal);
+  }
+`
+
+const RadioText = styled.span<{ isSelected: boolean }>`
+  color: ${props => props.isSelected ? 'var(--whatsapp-teal)' : 'var(--text-primary)'};
+  font-weight: ${props => props.isSelected ? '500' : 'normal'};
+  font-size: 14px;
+`
+
 const STEP_TEMPLATES = [
   {
     name: 'Question with Yes/No',
@@ -792,10 +853,17 @@ const ControlPanel = ({
 }: ControlPanelProps) => {
   // Remove state declarations that have been lifted
   const stepRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const [linkOpeningBehavior, setLinkOpeningBehavior] = useState<'webview' | 'newtab'>('webview');
 
   const updateStep = (index: number, updates: Partial<ConversationStep>) => {
     setSteps(steps.map((step, i) => 
-      i === index ? { ...step, ...updates } : step
+      i === index ? { 
+        ...step, 
+        ...updates,
+        // Ensure openLinkInWebView is properly set when updating a step with a link
+        ...(updates.link && typeof updates.openLinkInWebView === 'undefined' ? 
+          { openLinkInWebView: linkOpeningBehavior === 'webview' } : {})
+      } : step
     ));
   };
 
@@ -851,7 +919,8 @@ const ControlPanel = ({
             sender: businessMessage.sender,
             type: 'button',
             buttonText: option,
-            isBusinessMessage: true
+            isBusinessMessage: true,
+            openLinkInWebView: linkOpeningBehavior === 'webview'
           });
         });
       }
@@ -965,9 +1034,17 @@ const ControlPanel = ({
     
     const previewMessages = steps.map((step, index) => ({
       id: `preview-${index}`,
-      ...step,
       timestamp: new Date(),
-      status: 'sent' as const
+      status: 'sent' as const,
+      type: step.type,
+      buttonText: step.buttonText,
+      isBusinessMessage: step.isBusinessMessage,
+      link: step.link,
+      openLinkInWebView: step.openLinkInWebView,  // Preserve the openLinkInWebView property
+      imageUrl: step.imageUrl,
+      caption: step.caption,
+      text: step.text,
+      sender: step.sender
     }));
     
     setPreviewMessages(previewMessages);
@@ -1178,6 +1255,34 @@ const ControlPanel = ({
               </ButtonGroup>
             </FormGroup>
             
+            <FormGroup>
+              <Label>Link Opening Behavior</Label>
+              <RadioGroup>
+                <StyledRadioLabel isSelected={linkOpeningBehavior === 'webview'}>
+                  <RadioButton
+                    type="radio"
+                    name="link-behavior"
+                    checked={linkOpeningBehavior === 'webview'}
+                    onChange={() => setLinkOpeningBehavior('webview')}
+                  />
+                  <RadioText isSelected={linkOpeningBehavior === 'webview'}>
+                    Open in WhatsApp web view
+                  </RadioText>
+                </StyledRadioLabel>
+                <StyledRadioLabel isSelected={linkOpeningBehavior === 'newtab'}>
+                  <RadioButton
+                    type="radio"
+                    name="link-behavior"
+                    checked={linkOpeningBehavior === 'newtab'}
+                    onChange={() => setLinkOpeningBehavior('newtab')}
+                  />
+                  <RadioText isSelected={linkOpeningBehavior === 'newtab'}>
+                    Open in new browser tab
+                  </RadioText>
+                </StyledRadioLabel>
+              </RadioGroup>
+            </FormGroup>
+
             <Button variant="primary" onClick={handleAddBusinessMessage}>
               Add Business Message
             </Button>
@@ -1398,10 +1503,41 @@ const ControlPanel = ({
                                   placeholder="https://..."
                                   type="url"
                                 />
-                                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                                  If provided, clicking the button will open this link in a new tab
-                                </p>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                  If provided, clicking the button will open this link
+                                </div>
                               </FormGroup>
+                              
+                              {/* Add option for link opening behavior */}
+                              {step.link && (
+                                <FormGroup>
+                                  <Label>Link Opening Behavior</Label>
+                                  <RadioGroup>
+                                    <StyledRadioLabel isSelected={step.openLinkInWebView !== false}>
+                                      <RadioButton
+                                        type="radio"
+                                        name={`link-behavior-${index}`}
+                                        checked={step.openLinkInWebView !== false}
+                                        onChange={() => updateStep(index, { openLinkInWebView: true })}
+                                      />
+                                      <RadioText isSelected={step.openLinkInWebView !== false}>
+                                        Open in WhatsApp web view
+                                      </RadioText>
+                                    </StyledRadioLabel>
+                                    <StyledRadioLabel isSelected={step.openLinkInWebView === false}>
+                                      <RadioButton
+                                        type="radio"
+                                        name={`link-behavior-${index}`}
+                                        checked={step.openLinkInWebView === false}
+                                        onChange={() => updateStep(index, { openLinkInWebView: false })}
+                                      />
+                                      <RadioText isSelected={step.openLinkInWebView === false}>
+                                        Open in new browser tab
+                                      </RadioText>
+                                    </StyledRadioLabel>
+                                  </RadioGroup>
+                                </FormGroup>
+                              )}
                             </>
                           ) : (
                             <FormGroup>
@@ -1499,6 +1635,7 @@ const ControlPanel = ({
                     <PhonePreview
                       contact={contact}
                       messages={previewMessages}
+                      onUpdateMessage={onUpdateMessage}
                     />
                   </PreviewContainer>
                 </PreviewOverlay>
