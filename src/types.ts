@@ -13,6 +13,7 @@ export interface Message {
   isBusinessMessage?: boolean;
   delay?: number; // Delay in milliseconds before showing this message
   link?: string; // Add link property for button URLs
+  openLinkInWebView?: boolean; // Made explicit that this is a boolean
   imageUrl?: string;
   caption?: string;
 }
@@ -34,6 +35,7 @@ export interface ConversationStep {
   delay?: number; // Delay in milliseconds before showing this message
   highlightedText?: string;
   link?: string; // Add link property for button URLs
+  openLinkInWebView?: boolean; // Option to control whether links open in web view or new tab
   imageUrl?: string;
   caption?: string;
 }

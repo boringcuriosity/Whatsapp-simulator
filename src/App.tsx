@@ -356,6 +356,7 @@ function App() {
       isBusinessMessage: step.isBusinessMessage,
       buttonText: step.buttonText,
       link: step.link,
+      openLinkInWebView: step.openLinkInWebView,  // Preserve the openLinkInWebView property
       imageUrl: step.imageUrl,
       caption: step.caption
     };
@@ -373,6 +374,7 @@ function App() {
       timestamp: new Date(),
       status: 'sent',
       type: message.type || 'text',
+      openLinkInWebView: message.openLinkInWebView,  // Preserve the openLinkInWebView property
       ...message
     }
     
@@ -491,6 +493,7 @@ function App() {
         isBusinessMessage: nextStep.isBusinessMessage,
         buttonText: nextStep.buttonText,
         link: nextStep.link,
+        openLinkInWebView: nextStep.openLinkInWebView,  // Preserve the openLinkInWebView property
         imageUrl: nextStep.imageUrl,
         caption: nextStep.caption
       };
@@ -509,6 +512,7 @@ function App() {
         <PhonePreview 
           contact={contact}
           messages={messages}
+          onUpdateMessage={updateMessage}
         />
       </PreviewSection>
       <ControlSection isCollapsed={isControlPanelCollapsed}>
