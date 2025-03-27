@@ -15,17 +15,37 @@ export interface SavedConversation {
 
 const STORAGE_KEY = 'whatsapp-saved-conversations';
 
+const validateConversation = (conversation: any): conversation is SavedConversation => {
+  return (
+    typeof conversation.id === 'string' &&
+    typeof conversation.name === 'string' &&
+    typeof conversation.contact === 'object' &&
+    typeof conversation.contact.name === 'string' &&
+    typeof conversation.contact.avatar === 'string' &&
+    conversation.updatedAt instanceof Date &&
+    Array.isArray(conversation.steps)
+  );
+};
+
 export const conversationStorage = {
   getAll: (): SavedConversation[] => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
+      console.log('Raw saved conversations from localStorage:', saved); // Debug log
       if (!saved) return [];
-      return JSON.parse(saved, (key, value) => {
+      const parsed = JSON.parse(saved, (key, value) => {
         if (key === 'createdAt' || key === 'updatedAt') {
           return new Date(value);
         }
         return value;
       });
+      console.log('Parsed saved conversations:', parsed); // Debug log
+
+      // Validate each conversation
+      const validConversations = parsed.filter(validateConversation);
+      console.log('Valid conversations:', validConversations); // Debug log
+
+      return validConversations;
     } catch (error) {
       console.error('Error loading saved conversations:', error);
       return [];
@@ -79,4 +99,4 @@ export const conversationStorage = {
   deleteAll: () => {
     localStorage.removeItem(STORAGE_KEY);
   }
-}
+};

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { Clock, Save, Search, Trash2 } from 'lucide-react';
 import { SavedConversation } from '../services/conversationStorage';
@@ -187,12 +187,39 @@ export default function SavedConversations({
   onSaveCurrent
 }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
-  
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Validate conversations data
+    try {
+      conversations.forEach(conv => {
+        if (!conv.id || !conv.name || !conv.contact || !conv.updatedAt) {
+          throw new Error('Invalid conversation data');
+        }
+      });
+      setError(null);
+    } catch (err) {
+      console.error('Error validating conversations:', err);
+      setError('Failed to load saved conversations. Please try again.');
+    }
+  }, [conversations]);
+
   const filteredConversations = conversations.filter(conv => 
     conv.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     conv.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     conv.contact.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (error) {
+    return (
+      <Container>
+        <EmptyState>
+          <h3>Error</h3>
+          <p>{error}</p>
+        </EmptyState>
+      </Container>
+    );
+  }
 
   return (
     <Container>
