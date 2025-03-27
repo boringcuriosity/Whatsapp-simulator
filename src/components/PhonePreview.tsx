@@ -99,7 +99,7 @@ const ContactStatus = styled.div`
 
 const HeaderIcons = styled.div`
   display: flex;
-  gap: 15px;
+  gap: 4px;
   
   & > div {
     width: 24px;
@@ -205,6 +205,7 @@ const MessageText = styled.div`
   font-size: 14px;
   margin-bottom: 4px;
   line-height: 1.4;
+  white-space: pre-wrap;  // Add this to preserve newlines
   
   b, strong {
     font-weight: 600;
