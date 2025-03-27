@@ -4,6 +4,8 @@ import { ArrowLeft, ArrowRight } from 'lucide-react'
 import PhonePreview from './components/PhonePreview'
 import ControlPanel from './components/ControlPanel'
 import { Message, Contact, ConversationStep } from './types'
+import SaveConversationModal from './components/SaveConversationModal';
+import { conversationStorage, SavedConversation } from './services/conversationStorage';
 
 const AppContainer = styled.div`
   display: flex;
@@ -265,6 +267,51 @@ function App() {
   const [conversationError, setConversationError] = useState('');
 
   const [currentStepIndex, setCurrentStepIndex] = useState(-1);
+
+  // Add new state for saved conversations
+  const [savedConversations, setSavedConversations] = useState<SavedConversation[]>([]);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  
+  // Load saved conversations on mount
+  useEffect(() => {
+    setSavedConversations(conversationStorage.getAll());
+  }, []);
+  
+  const handleSaveConversation = (name: string, description: string) => {
+    const newConversation = conversationStorage.save({
+      name,
+      description,
+      steps: steps,
+      contact: {
+        name: contact.name,
+        avatar: contact.avatar
+      }
+    });
+    setSavedConversations(prev => [...prev, newConversation]);
+  };
+
+  const handleLoadSavedConversation = (conversation: SavedConversation) => {
+    setSteps(conversation.steps);
+    setShowJsonPreview(false);
+    setConversationFlow(JSON.stringify(conversation.steps, null, 2));
+    // Update contact info when loading saved conversation
+    updateContact({
+      name: conversation.contact.name,
+      avatar: conversation.contact.avatar
+    });
+    // Clear any existing conversation state
+    setMessages([]);
+    setCurrentStepIndex(-1);
+    setConversationQueue([]);
+    setIsPlayingConversation(false);
+  };
+
+  const handleDeleteSavedConversation = (id: string) => {
+    const deleted = conversationStorage.delete(id);
+    if (deleted) {
+      setSavedConversations(prev => prev.filter(conv => conv.id !== id));
+    }
+  };
 
   // Add a useEffect to automatically update savedConversation when steps change
   useEffect(() => {
@@ -535,6 +582,7 @@ function App() {
             >
               <img src="/settings icon.svg" alt="Toggle controls" />
             </ToggleButton>
+            
             <ControlPanel
               contact={contact}
               messages={messages}
@@ -544,7 +592,6 @@ function App() {
               onDeleteMessage={deleteMessage}
               onClearMessages={clearAllMessages}
               onStartConversation={startConversation}
-              // Pass down lifted state
               contactSettingsOpen={contactSettingsOpen}
               setContactSettingsOpen={setContactSettingsOpen}
               messageType={messageType}
@@ -557,7 +604,6 @@ function App() {
               setConversationFlow={setConversationFlow}
               steps={steps}
               setSteps={setSteps}
-              // New lifted state
               showJsonPreview={showJsonPreview}
               setShowJsonPreview={setShowJsonPreview}
               showPreview={showPreview}
@@ -566,10 +612,15 @@ function App() {
               setPreviewMessages={setPreviewMessages}
               conversationError={conversationError}
               setConversationError={setConversationError}
+              savedConversations={savedConversations}
+              onLoadSavedConversation={handleLoadSavedConversation}
+              onDeleteSavedConversation={handleDeleteSavedConversation}
+              onSaveCurrentConversation={() => setIsSaveModalOpen(true)}
             />
           </>
         )}
       </ControlSection>
+      
       <PlayPauseButton
         onClick={handlePlayConversation}
         title={isPlayingConversation ? "Pause conversation" : "Start/Resume conversation"}
@@ -579,6 +630,7 @@ function App() {
           alt={isPlayingConversation ? "Pause" : "Play"} 
         />
       </PlayPauseButton>
+      
       <ManualControls>
         <ArrowButton 
           onClick={handlePreviousStep}
@@ -590,14 +642,21 @@ function App() {
         <ArrowButton 
           onClick={handleNextStep}
           disabled={
-            steps.length === 0 || // No conversation flow available
-            (currentStepIndex >= steps.length - 1 && messages.length > 0) // At the end of conversation
+            steps.length === 0 || 
+            (currentStepIndex >= steps.length - 1 && messages.length > 0)
           }
           title="Next message"
         >
           <ArrowRight />
         </ArrowButton>
       </ManualControls>
+
+      {/* Add SaveConversationModal */}
+      <SaveConversationModal
+        isOpen={isSaveModalOpen}
+        onClose={() => setIsSaveModalOpen(false)}
+        onSave={handleSaveConversation}
+      />
     </AppContainer>
   );
 }
