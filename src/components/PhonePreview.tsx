@@ -15,11 +15,11 @@ const fadeIn = keyframes`
 `
 
 const PhoneFrame = styled.div`
-  width: 375px;
-  height: 667px;
+  width: 370px;  /* Reduced from 375px to 320px */
+  height: 720px;  /* Reduced from 667px to 640px */
   background-color: #111;
   border-radius: 40px;
-  padding: 8px;  /* Reduced from 15px to 8px */
+  padding: 8px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   position: relative;
   overflow: hidden;
@@ -123,11 +123,24 @@ const ChatBody = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d9d9d9' fill-opacity='0.4'%3E%3Cpath d='M50 50c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10c0 5.523-4.477 10-10 10s-10-4.477-10-10 4.477-10 10-10zM10 10c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10c0 5.523-4.477 10-10 10S0 25.523 0 20s4.477-10 10-10zm10 8c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8zm40 40c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8z' /%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  background-image: url('/Whatsapp-chat-backgroung.png');
+  background-size: cover;
+  background-position: center;
 
   @media (max-width: 768px) {
     padding: 8px;
   }
+`
+
+const TimestampDivider = styled.div`
+  align-self: center;
+  background-color: #D5EAF7;
+  color: rgba(0, 0, 0, 0.7);
+  font-size: 12.5px;
+  padding: 5px 12px;
+  border-radius: 7px;
+  margin: 10px 0;
+  box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.13);
 `
 
 const MessageBubble = styled.div<{ sender: 'me' | 'them', isNew?: boolean, isBusinessMessage?: boolean, isClickable?: boolean }>`
@@ -669,6 +682,7 @@ const PhonePreview = ({ contact, messages }: PhonePreviewProps) => {
         </ChatHeader>
         
         <ChatBody ref={chatBodyRef}>
+          <TimestampDivider>Today</TimestampDivider>
           {renderMessages()}
         </ChatBody>
         
