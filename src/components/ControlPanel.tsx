@@ -3,6 +3,8 @@ import styled from 'styled-components'
 import { Copy, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
 import { Message, Contact, MessageStatus, ContactStatus, ConversationStep } from '../types'
 import PhonePreview from './PhonePreview'
+import SavedConversations from './SavedConversations'
+import { SavedConversation } from '../services/conversationStorage'
 
 const Container = styled.div`
   display: flex;
@@ -446,6 +448,7 @@ const EditorTab = styled.button<{ active: boolean }>`
   color: ${props => props.active ? 'var(--whatsapp-teal)' : 'var(--text-secondary)'};
   border: none;
   border-bottom: 3px solid ${props => props.active ? 'var(--whatsapp-teal)' : 'transparent'};
+  flex: 1;
   
   &:hover {
     background-color: ${props => props.active ? 'white' : '#efefef'};
@@ -776,6 +779,8 @@ const STEP_TEMPLATES = [
   }
 ];
 
+type EditorMode = 'visual' | 'json' | 'saved';
+
 interface ControlPanelProps {
   contact: Contact;
   messages: Message[];
@@ -818,6 +823,10 @@ interface ControlPanelProps {
   setPreviewMessages: (messages: Message[]) => void;
   conversationError: string;
   setConversationError: (error: string) => void;
+  savedConversations: SavedConversation[];
+  onLoadSavedConversation: (conversation: SavedConversation) => void;
+  onDeleteSavedConversation: (id: string) => void;
+  onSaveCurrentConversation: () => void;
 }
 
 const ControlPanel = ({
@@ -849,11 +858,16 @@ const ControlPanel = ({
   previewMessages,
   setPreviewMessages,
   conversationError,
-  setConversationError
+  setConversationError,
+  savedConversations,
+  onLoadSavedConversation,
+  onDeleteSavedConversation,
+  onSaveCurrentConversation
 }: ControlPanelProps) => {
   // Remove state declarations that have been lifted
   const stepRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [linkOpeningBehavior, setLinkOpeningBehavior] = useState<'webview' | 'newtab'>('webview');
+  const [editorMode, setEditorMode] = useState<EditorMode>('visual');
 
   const updateStep = (index: number, updates: Partial<ConversationStep>) => {
     setSteps(steps.map((step, i) => 
@@ -1291,20 +1305,69 @@ const ControlPanel = ({
           <ConversationFlowContainer>
             <EditorTabs>
               <EditorTab 
-                active={!showJsonPreview} 
-                onClick={handleSwitchToVisualView}
+                active={editorMode === 'visual'} 
+                onClick={() => {
+                  if (editorMode === 'json') {
+                    handleSwitchToVisualView();
+                  }
+                  setEditorMode('visual');
+                }}
               >
                 Visual Editor
               </EditorTab>
               <EditorTab 
-                active={showJsonPreview} 
-                onClick={handleSwitchToJsonView}
+                active={editorMode === 'json'} 
+                onClick={() => {
+                  handleSwitchToJsonView();
+                  setEditorMode('json');
+                }}
               >
                 JSON Editor
               </EditorTab>
+              <EditorTab
+                active={editorMode === 'saved'}
+                onClick={() => setEditorMode('saved')}
+              >
+                Saved Conversations
+              </EditorTab>
             </EditorTabs>
 
-            {!showJsonPreview ? (
+            {editorMode === 'saved' ? (
+              <SavedConversations
+                conversations={savedConversations}
+                onSelect={onLoadSavedConversation}
+                onDelete={onDeleteSavedConversation}
+                onSaveCurrent={onSaveCurrentConversation}
+              />
+            ) : editorMode === 'json' ? (
+              <FormGroup>
+                <Label>JSON Editor</Label>
+                <ConversationTextArea
+                  value={conversationFlow}
+                  onChange={(e) => {
+                    setConversationFlow(e.target.value);
+                    try {
+                      const parsed = JSON.parse(e.target.value);
+                      setSteps(parsed);
+                      setConversationError('');
+                    } catch (error) {
+                      setConversationError('Invalid JSON format');
+                    }
+                  }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
+                  {conversationError && <ErrorMessage>{conversationError}</ErrorMessage>}
+                  <ActionButton 
+                    variant="primary" 
+                    onClick={handleFormSubmit}
+                    style={{ marginLeft: 'auto' }}
+                    disabled={!!conversationError}
+                  >
+                    Start Conversation
+                  </ActionButton>
+                </div>
+              </FormGroup>
+            ) : (
               <>
                 <QuickActionsBar>
                   <Label>Add Template:</Label>
@@ -1640,34 +1703,6 @@ const ControlPanel = ({
                   </PreviewContainer>
                 </PreviewOverlay>
               </>
-            ) : (
-              <FormGroup>
-                <Label>JSON Editor</Label>
-                <ConversationTextArea
-                  value={conversationFlow}
-                  onChange={(e) => {
-                    setConversationFlow(e.target.value);
-                    try {
-                      const parsed = JSON.parse(e.target.value);
-                      setSteps(parsed);
-                      setConversationError('');
-                    } catch (error) {
-                      setConversationError('Invalid JSON format');
-                    }
-                  }}
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
-                  {conversationError && <ErrorMessage>{conversationError}</ErrorMessage>}
-                  <ActionButton 
-                    variant="primary" 
-                    onClick={handleFormSubmit}
-                    style={{ marginLeft: 'auto' }}
-                    disabled={!!conversationError}
-                  >
-                    Start Conversation
-                  </ActionButton>
-                </div>
-              </FormGroup>
             )}
           </ConversationFlowContainer>
         )}
