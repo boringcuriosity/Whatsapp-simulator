@@ -1,30 +1,51 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
-import { Clock, Save, Search, Trash2 } from 'lucide-react';
-import { SavedConversation } from '../services/conversationStorage';
+import { Clock, Save, Search, Trash2, Download, Upload, ArrowRight } from 'lucide-react';
+import { SavedConversation, conversationStorage } from '../services/conversationStorage';
 import { format } from 'date-fns';
 
 const Container = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px;
+  gap: 20px;
+  padding: 24px;
   background: #f9f9f9;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+`;
+
+const Header = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+`;
+
+const Title = styled.h2`
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
 `;
 
 const SearchBox = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   background: white;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
+  padding: 12px 16px;
+  border-radius: 50px;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
+  
+  &:focus-within {
+    border-color: var(--whatsapp-teal);
+    box-shadow: 0 0 0 2px rgba(37, 211, 102, 0.1);
+  }
   
   svg {
-    color: var(--text-secondary);
+    color: #666;
     width: 18px;
     height: 18px;
   }
@@ -34,32 +55,71 @@ const SearchInput = styled.input`
   border: none;
   outline: none;
   flex: 1;
-  font-size: 14px;
+  font-size: 15px;
   
   &::placeholder {
-    color: var(--text-secondary);
+    color: #999;
   }
 `;
 
 const ConversationList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 300px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  max-height: 60vh;
   overflow-y: auto;
+  padding: 4px;
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+  }
 `;
 
 const ConversationCard = styled.div`
   background: white;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
+  padding: 18px;
+  border-radius: 12px;
+  border: 1px solid #f0f0f0;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  
+  &:before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 5px;
+    height: 100%;
+    background: var(--whatsapp-teal);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
   
   &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+    
+    &:before {
+      opacity: 1;
+    }
   }
 `;
 
@@ -67,39 +127,51 @@ const CardHeader = styled.div`
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 `;
 
 const ContactInfo = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed #f0f0f0;
 `;
 
-const ContactAvatar = styled.img`
-  width: 32px;
-  height: 32px;
+const ContactAvatar = styled.div`
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--whatsapp-teal);
+`;
+
+const Avatar = styled.img`
+  width: 100%;
+  height: 100%;
   object-fit: cover;
 `;
 
 const ContactName = styled.div`
-  font-size: 14px;
-  color: var(--text-secondary);
+  font-size: 15px;
+  color: #555;
+  font-weight: 500;
 `;
 
-const Title = styled.div`
-  font-weight: 500;
-  color: var(--text-primary);
+const CardTitle = styled.div`
+  font-weight: 600;
+  color: #1a1a1a;
+  font-size: 16px;
+  margin-bottom: 4px;
 `;
 
 const TimeStamp = styled.div`
   display: flex;
   align-items: center;
-  gap: 4px;
-  color: var(--text-secondary);
-  font-size: 12px;
+  gap: 6px;
+  color: #777;
+  font-size: 13px;
   
   svg {
     width: 14px;
@@ -108,50 +180,70 @@ const TimeStamp = styled.div`
 `;
 
 const Description = styled.div`
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
+  font-size: 14px;
+  color: #555;
+  margin: 10px 0;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const StepCount = styled.div`
-  font-size: 12px;
+  font-size: 13px;
   color: var(--whatsapp-teal);
+  font-weight: 500;
+  margin-top: auto;
+  padding: 6px 0;
 `;
 
 const ActionBar = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border-color);
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+`;
+
+const ButtonsContainer = styled.div`
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
 `;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 13px;
+  padding: 10px 18px;
+  border-radius: 50px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   border: none;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  transition: all 0.2s;
   
   background-color: ${props => {
     if (props.variant === 'primary') return 'var(--whatsapp-teal)';
     if (props.variant === 'danger') return '#ffebee';
-    return '#f0f2f5';
+    return '#f5f5f5';
   }};
   
   color: ${props => {
     if (props.variant === 'primary') return 'white';
     if (props.variant === 'danger') return '#f44336';
-    return 'var(--text-primary)';
+    return '#444';
   }};
   
+  box-shadow: ${props => props.variant === 'primary' ? '0 4px 8px rgba(37, 211, 102, 0.2)' : '0 2px 4px rgba(0, 0, 0, 0.05)'};
+  
   &:hover {
-    opacity: 0.9;
+    transform: translateY(-2px);
+    box-shadow: ${props => props.variant === 'primary' ? '0 6px 12px rgba(37, 211, 102, 0.3)' : '0 4px 8px rgba(0, 0, 0, 0.1)'};
   }
   
   svg {
@@ -160,16 +252,48 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   }
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 32px;
-  color: var(--text-secondary);
+const CardButton = styled(Button)`
+  padding: 8px 14px;
+  font-size: 13px;
+`;
+
+const IconButton = styled(Button)`
+  padding: 8px;
+  border-radius: 50%;
+  min-width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   
   svg {
-    width: 48px;
-    height: 48px;
-    margin-bottom: 16px;
-    color: var(--text-secondary);
+    margin: 0;
+  }
+`;
+
+const EmptyState = styled.div`
+  text-align: center;
+  padding: 40px;
+  background: white;
+  border-radius: 12px;
+  grid-column: 1 / -1;
+  
+  h3 {
+    font-size: 18px;
+    margin: 16px 0 8px;
+    color: #444;
+  }
+  
+  p {
+    color: #777;
+    margin: 0;
+  }
+  
+  svg {
+    width: 56px;
+    height: 56px;
+    color: #ccc;
+    opacity: 0.8;
   }
 `;
 
@@ -188,6 +312,7 @@ export default function SavedConversations({
 }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     // Validate conversations data
@@ -210,6 +335,46 @@ export default function SavedConversations({
     conv.contact.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleExport = () => {
+    try {
+      const json = conversationStorage.exportConversations();
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'conversations.json';
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      alert(`Export failed: ${(error as Error).message}`);
+    }
+  };
+
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        const result = conversationStorage.importConversations(content);
+        if (result.success) {
+          // Clear the file input for future imports
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+          // Force a refresh of the conversations list
+          window.location.reload();
+        } else {
+          alert(`Failed to import conversations: ${result.error}`);
+        }
+      };
+      reader.onerror = () => {
+        alert('Failed to read the file. Please try again.');
+      };
+      reader.readAsText(file);
+    }
+  };
+
   if (error) {
     return (
       <Container>
@@ -223,20 +388,47 @@ export default function SavedConversations({
 
   return (
     <Container>
+      <Header>
+        <Title>Saved Conversations</Title>
+      </Header>
+      
       <SearchBox>
         <Search />
         <SearchInput
-          placeholder="Search saved conversations..."
+          placeholder="Search by name, description or contact..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </SearchBox>
-
-      <Button variant="primary" onClick={onSaveCurrent}>
-        <Save size={16} />
-        Save Current Conversation
-      </Button>
-
+      
+      <ButtonsContainer>
+        <Button variant="primary" onClick={onSaveCurrent}>
+          <Save size={16} />
+          Save Current
+        </Button>
+        
+        <Button variant="secondary" onClick={handleExport}>
+          <Download size={16} />
+          Export
+        </Button>
+        
+        <Button
+          variant="secondary"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <Upload size={16} />
+          Import
+        </Button>
+        
+        <input
+          type="file"
+          accept="application/json"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          onChange={handleImport}
+        />
+      </ButtonsContainer>
+      
       <ConversationList>
         {filteredConversations.length === 0 ? (
           <EmptyState>
@@ -246,35 +438,39 @@ export default function SavedConversations({
           </EmptyState>
         ) : (
           filteredConversations.map(conv => (
-            <ConversationCard key={conv.id} onClick={() => onSelect(conv)}>
+            <ConversationCard key={conv.id}>
               <CardHeader>
                 <div style={{ flex: 1 }}>
-                  <Title>{conv.name}</Title>
+                  <CardTitle>{conv.name}</CardTitle>
                   <TimeStamp>
                     <Clock />
                     {format(conv.updatedAt, 'MMM d, yyyy')}
                   </TimeStamp>
                 </div>
               </CardHeader>
-
+              
               <ContactInfo>
-                <ContactAvatar src={conv.contact.avatar} alt={conv.contact.name} />
-                <ContactName>with {conv.contact.name}</ContactName>
+                <ContactAvatar>
+                  <Avatar src={conv.contact.avatar} alt={conv.contact.name} />
+                </ContactAvatar>
+                <ContactName>{conv.contact.name}</ContactName>
               </ContactInfo>
-
+              
               {conv.description && (
                 <Description>{conv.description}</Description>
               )}
               
               <StepCount>
-                {conv.steps.length} step{conv.steps.length !== 1 ? 's' : ''}
+                {conv.steps.length} step{conv.steps.length !== 1 ? 's' : ''} in this conversation
               </StepCount>
-
+              
               <ActionBar>
-                <Button onClick={() => onSelect(conv)}>
-                  Load
-                </Button>
-                <Button
+                <CardButton onClick={() => onSelect(conv)}>
+                  Load Conversation
+                  <ArrowRight size={14} />
+                </CardButton>
+                
+                <IconButton
                   variant="danger"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -282,8 +478,7 @@ export default function SavedConversations({
                   }}
                 >
                   <Trash2 size={16} />
-                  Delete
-                </Button>
+                </IconButton>
               </ActionBar>
             </ConversationCard>
           ))
