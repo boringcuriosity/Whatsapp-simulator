@@ -28,10 +28,12 @@ const PreviewSection = styled.div`
   padding: 20px;
   background-color: #f0f2f5;
   overflow: auto;
+  min-height: 100%;
 
   @media (max-width: 768px) {
-    padding: 10px;
-    min-height: 100vh;
+    padding: 10px 0;
+    align-items: flex-start;
+    min-height: calc(100vh - 60px);
   }
 `
 

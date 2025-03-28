@@ -34,6 +34,19 @@ const PhoneSection = styled.div`
   padding: 20px;
   background-color: #f0f2f5;
   overflow: auto;
+  min-height: 100%;
+
+  @media (max-width: 768px) {
+    padding: 0;
+    align-items: flex-start;
+    min-height: calc(100vh - 60px); /* Account for any headers */
+  }
+
+  /* Add specific adjustments for Windows devices with different heights */
+  @media (min-width: 769px) and (max-height: 800px) {
+    padding: 10px;
+    align-items: center; /* Center vertically on smaller height screens */
+  }
 `;
 
 const ConversationList = styled.div`

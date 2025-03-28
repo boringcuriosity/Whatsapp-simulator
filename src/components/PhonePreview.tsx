@@ -15,21 +15,43 @@ const fadeIn = keyframes`
 `
 
 const PhoneFrame = styled.div`
-  width: 370px;  /* Reduced from 375px to 320px */
-  height: 720px;  /* Reduced from 667px to 640px */
+  width: 360px;  /* Adjusted base width */
+  height: 740px; /* Adjusted height to maintain aspect ratio */
   background-color: #111;
   border-radius: 40px;
   padding: 8px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   position: relative;
   overflow: hidden;
+  transform-origin: center center; /* Center the scaling origin */
 
+  /* Media queries for better responsiveness */
   @media (max-width: 768px) {
     width: 100%;
-    height: 100vh;
-    border-radius: 0;
-    padding: 0;
-    box-shadow: none;
+    max-width: 360px; /* Prevent phone from getting too large */
+    height: calc(100vh - 40px); /* Account for some padding */
+    max-height: 740px; /* Maintain max height */
+    margin: 20px auto;
+    border-radius: 20px;
+    transform: scale(0.95); /* Slightly reduce size on mobile */
+  }
+
+  /* Fix for Windows laptops with lower height */
+  @media (min-width: 769px) and (max-height: 800px) {
+    transform: scale(0.85); /* More aggressive scaling for smaller screens */
+    margin: -40px auto; /* Adjust vertical position to prevent cutting */
+  }
+  
+  /* Medium height screens */
+  @media (min-width: 769px) and (min-height: 801px) and (max-height: 900px) {
+    transform: scale(0.9);
+    margin: -20px auto;
+  }
+  
+  /* Handle taller screens */
+  @media (min-width: 769px) and (min-height: 901px) {
+    transform: scale(1);
+    margin: 0 auto;
   }
 `
 
@@ -43,7 +65,11 @@ const PhoneScreen = styled.div`
   flex-direction: column;
 
   @media (max-width: 768px) {
-    border-radius: 0;
+    border-radius: 16px; /* Reduced border radius for mobile */
+  }
+
+  @media (min-width: 769px) and (max-height: 800px) {
+    border-radius: 30px; /* Slightly reduce border radius for smaller screens */
   }
 `
 
