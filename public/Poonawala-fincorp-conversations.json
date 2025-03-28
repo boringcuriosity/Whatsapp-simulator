@@ -1,0 +1,144 @@
+[
+  {
+    "name": "Successful Consent Journey",
+    "description": "",
+    "steps": [
+      {
+        "text": "Dear customer,\nTo serve you better, please share your consent for loan monitoring by clicking on the link below.",
+        "sender": "them",
+        "delay": 1000,
+        "type": "text",
+        "isBusinessMessage": true
+      },
+      {
+        "text": "This will help us provide you with timely insights and better manage your loan journey.",
+        "sender": "them",
+        "delay": 1000,
+        "type": "text",
+        "isBusinessMessage": false
+      },
+      {
+        "text": "Share consent",
+        "sender": "them",
+        "delay": 500,
+        "type": "button",
+        "isBusinessMessage": true,
+        "buttonText": "Share consent",
+        "link": "https://nexus.setu.co/login?logoURL=https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRO_iAD200Bs33lpbzwNAVfkFp8ewl-k3Z93w&s&fiuName=Poonawalla%20Fincorp&hue=263D76&hueLight=dbe2f3&font=Matter&aaFlag=Setu%20AA&journeyTypeFlag=dual&useCaseFlag=income&edgeCaseFlag=no&showFIUNameInHeaderFlag=yes&consentShownOnFlag=approval&addMobileNumberFlag=yes&purposeText=To%20verify%20your%20income%20and%20calculate%20loan%20offer&purposeText2=To%20monitor%20your%20loan%20repayments&supportText=Please%20select%20the%20account%20where%20your%20salary%20is%20credited&numberOfAccountsFlag=multiple&selectAllOnFetchFlag=no&accountFetchMethodFlag=auto&redirectButtonText=Go%20back%20to%20%3CFIU%3E&redirectUrl=https%3A%2F%2Ftinyurl.com%2Ffigma-fincorp-proto",
+        "openLinkInWebView": true
+      },
+      {
+        "text": "Dear customer,\nThank you for sharing your consent for loan monitoring. Your journey is now complete ✅, and we will ensure seamless loan management for you.",
+        "sender": "them",
+        "delay": 11000,
+        "type": "text",
+        "isBusinessMessage": false
+      }
+    ],
+    "contact": {
+      "name": "Poonawalla Fincorp",
+      "avatar": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRO_iAD200Bs33lpbzwNAVfkFp8ewl-k3Z93w"
+    },
+    "id": "1743141121915",
+    "createdAt": "2025-03-28T05:52:01.915Z",
+    "updatedAt": "2025-03-28T05:52:01.915Z"
+  },
+  {
+    "name": "Consent Unsuccessful – Retry",
+    "description": "",
+    "steps": [
+      {
+        "text": "Dear customer,\nTo serve you better, please share your consent for loan monitoring by clicking on the link below.",
+        "sender": "them",
+        "delay": 1000,
+        "type": "text",
+        "isBusinessMessage": true
+      },
+      {
+        "text": "This will help us provide you with timely insights and better manage your loan journey.",
+        "sender": "them",
+        "delay": 1000,
+        "type": "text",
+        "isBusinessMessage": false
+      },
+      {
+        "text": "Share consent",
+        "sender": "them",
+        "delay": 500,
+        "type": "button",
+        "isBusinessMessage": true,
+        "buttonText": "Share consent",
+        "link": "https://nexus.setu.co/login?logoURL=https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRO_iAD200Bs33lpbzwNAVfkFp8ewl-k3Z93w&s&fiuName=Poonawalla%20Fincorp&hue=263D76&hueLight=dbe2f3&font=Matter&aaFlag=Setu%20AA&journeyTypeFlag=dual&useCaseFlag=income&edgeCaseFlag=no&showFIUNameInHeaderFlag=yes&consentShownOnFlag=approval&addMobileNumberFlag=yes&purposeText=To%20verify%20your%20income%20and%20calculate%20loan%20offer&purposeText2=To%20monitor%20your%20loan%20repayments&supportText=Please%20select%20the%20account%20where%20your%20salary%20is%20credited&numberOfAccountsFlag=multiple&selectAllOnFetchFlag=no&accountFetchMethodFlag=auto&redirectButtonText=Go%20back%20to%20%3CFIU%3E&redirectUrl=https%3A%2F%2Ftinyurl.com%2Ffigma-fincorp-proto",
+        "openLinkInWebView": true
+      },
+      {
+        "text": "Dear customer,\nIt looks like your consent attempt was unsuccessful ❌. Please retry by clicking on the link below",
+        "sender": "them",
+        "delay": 8000,
+        "type": "text",
+        "isBusinessMessage": false
+      },
+      {
+        "text": "This ensures uninterrupted management of your loan account.",
+        "sender": "them",
+        "delay": 1000,
+        "type": "text",
+        "isBusinessMessage": false
+      },
+      {
+        "text": "Share consent",
+        "sender": "them",
+        "delay": 1000,
+        "type": "button",
+        "isBusinessMessage": true,
+        "buttonText": "Share consent",
+        "link": "https://nexus.setu.co/login?logoURL=https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRO_iAD200Bs33lpbzwNAVfkFp8ewl-k3Z93w&s&fiuName=Poonawalla%20Fincorp&hue=263D76&hueLight=dbe2f3&font=Matter&aaFlag=Setu%20AA&journeyTypeFlag=dual&useCaseFlag=income&edgeCaseFlag=no&showFIUNameInHeaderFlag=yes&consentShownOnFlag=approval&addMobileNumberFlag=yes&purposeText=To%20verify%20your%20income%20and%20calculate%20loan%20offer&purposeText2=To%20monitor%20your%20loan%20repayments&supportText=Please%20select%20the%20account%20where%20your%20salary%20is%20credited&numberOfAccountsFlag=multiple&selectAllOnFetchFlag=no&accountFetchMethodFlag=auto&redirectButtonText=Go%20back%20to%20%3CFIU%3E&redirectUrl=https%3A%2F%2Ftinyurl.com%2Ffigma-fincorp-proto",
+        "openLinkInWebView": true
+      }
+    ],
+    "contact": {
+      "name": "Poonawalla Fincorp",
+      "avatar": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRO_iAD200Bs33lpbzwNAVfkFp8ewl-k3Z93w"
+    },
+    "id": "1743141328242",
+    "createdAt": "2025-03-28T05:55:28.242Z",
+    "updatedAt": "2025-03-28T05:55:28.242Z"
+  },
+  {
+    "name": "Reminder to Complete Consent",
+    "description": "",
+    "steps": [
+      {
+        "text": "Dear customer,\nWe noticed you haven’t completed your consent for loan monitoring yet. Please click on the link below to complete it quickly",
+        "sender": "them",
+        "delay": 1000,
+        "type": "text",
+        "isBusinessMessage": true
+      },
+      {
+        "text": "This helps us manage your loan better.",
+        "sender": "them",
+        "delay": 1000,
+        "type": "text",
+        "isBusinessMessage": false
+      },
+      {
+        "text": "Share consent",
+        "sender": "them",
+        "delay": 500,
+        "type": "button",
+        "isBusinessMessage": true,
+        "buttonText": "Share consent",
+        "link": "https://nexus.setu.co/login?logoURL=https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRO_iAD200Bs33lpbzwNAVfkFp8ewl-k3Z93w&s&fiuName=Poonawalla%20Fincorp&hue=263D76&hueLight=dbe2f3&font=Matter&aaFlag=Setu%20AA&journeyTypeFlag=dual&useCaseFlag=income&edgeCaseFlag=no&showFIUNameInHeaderFlag=yes&consentShownOnFlag=approval&addMobileNumberFlag=yes&purposeText=To%20verify%20your%20income%20and%20calculate%20loan%20offer&purposeText2=To%20monitor%20your%20loan%20repayments&supportText=Please%20select%20the%20account%20where%20your%20salary%20is%20credited&numberOfAccountsFlag=multiple&selectAllOnFetchFlag=no&accountFetchMethodFlag=auto&redirectButtonText=Go%20back%20to%20%3CFIU%3E&redirectUrl=https%3A%2F%2Ftinyurl.com%2Ffigma-fincorp-proto",
+        "openLinkInWebView": true
+      }
+    ],
+    "contact": {
+      "name": "Poonawalla Fincorp",
+      "avatar": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRO_iAD200Bs33lpbzwNAVfkFp8ewl-k3Z93w"
+    },
+    "id": "1743141400268",
+    "createdAt": "2025-03-28T05:56:40.268Z",
+    "updatedAt": "2025-03-28T05:56:40.268Z"
+  }
+]
