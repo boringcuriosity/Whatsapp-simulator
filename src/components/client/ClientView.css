@@ -1,0 +1,72 @@
+:root {
+  --whatsapp-teal: #128C7E;
+  --whatsapp-green: #25D366;
+  --whatsapp-light-green: #DCF8C6;
+  --whatsapp-blue: #34B7F1;
+  --whatsapp-background: #E5DDD5;
+}
+
+/* Custom styling for the client view */
+.client-view-heading {
+  color: var(--whatsapp-teal);
+}
+
+.conversation-description {
+  font-size: 0.85rem;
+  color: #555;
+  margin: 0;
+}
+
+/* Progress indicator styling */
+.progress-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--whatsapp-green);
+  margin-right: 5px;
+  display: inline-block;
+  animation: pulse 1.5s infinite;
+}
+
+/* Pulse animation for the progress dot */
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .conversation-card {
+    padding: 8px;
+  }
+  
+  .control-bar {
+    padding: 8px 16px;
+  }
+}
+
+/* Add a subtle hover effect for interactive elements */
+.conversation-card:hover {
+  transform: translateY(-1px);
+  transition: transform 0.2s ease;
+}
+
+/* Transition for status changes */
+.status-indicator {
+  transition: opacity 0.3s ease;
+}
+
+/* Active conversation highlighting */
+.active-conversation {
+  border-left: 3px solid var(--whatsapp-teal);
+}
