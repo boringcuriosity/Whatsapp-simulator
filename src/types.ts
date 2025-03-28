@@ -39,3 +39,11 @@ export interface ConversationStep {
   imageUrl?: string;
   caption?: string;
 }
+
+export interface SavedConversation {
+  id: string;
+  name: string;
+  description?: string;
+  contact: Contact;
+  steps: ConversationStep[];
+}
