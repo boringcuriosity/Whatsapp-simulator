@@ -127,6 +127,13 @@ const ChatBody = styled.div`
   background-size: cover;
   background-position: center;
 
+  /* Hide the vertical scroll bar */
+  scrollbar-width: none; /* For Firefox */
+  -ms-overflow-style: none; /* For Internet Explorer and Edge */
+  &::-webkit-scrollbar {
+    display: none; /* For Chrome, Safari, and Opera */
+  }
+
   @media (max-width: 768px) {
     padding: 8px;
   }
