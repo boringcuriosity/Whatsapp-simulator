@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
-import { Copy, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
-import { Message, Contact, MessageStatus, ContactStatus, ConversationStep } from '../types'
+import { Copy, Trash2, ArrowUp, ArrowDown, HelpCircle, PlusCircle, Image, MessageSquare, Clock, UserCircle } from 'lucide-react'
+import { Message, Contact, MessageStatus, ContactStatus, ConversationStep, MessageButton } from '../types'
 import PhonePreview from './PhonePreview'
 import SavedConversations from './SavedConversations'
 import { SavedConversation } from '../services/conversationStorage'
@@ -30,6 +30,8 @@ const Section = styled.div`
 `
 
 const SectionTitle = styled.h2`
+display: flex;
+  align-items: center;
   font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
@@ -864,10 +866,17 @@ const ControlPanel = ({
   onDeleteSavedConversation,
   onSaveCurrentConversation
 }: ControlPanelProps) => {
-  // Remove state declarations that have been lifted
   const stepRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [linkOpeningBehavior, setLinkOpeningBehavior] = useState<'webview' | 'newtab'>('webview');
   const [editorMode, setEditorMode] = useState<EditorMode>('visual');
+  const [showHelp, setShowHelp] = useState(false); // Changed from true to false
+  
+  // Force set the message type to conversation flow
+  useEffect(() => {
+    if (messageType !== 'conversation') {
+      setMessageType('conversation');
+    }
+  }, [messageType, setMessageType]);
 
   const updateStep = (index: number, updates: Partial<ConversationStep>) => {
     setSteps(steps.map((step, i) => 
@@ -881,136 +890,176 @@ const ControlPanel = ({
     ));
   };
 
+  // Function to add a button to the message
+  const addButtonToMessage = (stepIndex: number, buttonText: string = '', url: string = '') => {
+    const step = steps[stepIndex];
+    if (!step) return;
+    
+    // Initialize buttons array if it doesn't exist
+    const buttons = step.buttons || [];
+    
+    // Limit to 5 buttons
+    if (buttons.length >= 5) {
+      alert("Maximum 5 buttons allowed per message");
+      return;
+    }
+    
+    // Add a new button
+    const updatedButtons = [
+      ...buttons,
+      { text: buttonText, url, openInWebView: true }
+    ];
+    
+    // Update the step with new buttons
+    updateStep(stepIndex, { buttons: updatedButtons });
+  };
+  
+  // Function to update a button's properties
+  const updateMessageButton = (
+    stepIndex: number, 
+    buttonIndex: number, 
+    updates: Partial<MessageButton>
+  ) => {
+    const step = steps[stepIndex];
+    if (!step || !step.buttons) return;
+    
+    // Create a new array with the updated button
+    const updatedButtons = step.buttons.map((btn, idx) => 
+      idx === buttonIndex ? { ...btn, ...updates } : btn
+    );
+    
+    // Update the step with modified buttons
+    updateStep(stepIndex, { buttons: updatedButtons });
+  };
+  
+  // Function to remove a button from a message
+  const removeButtonFromMessage = (stepIndex: number, buttonIndex: number) => {
+    const step = steps[stepIndex];
+    if (!step || !step.buttons) return;
+    
+    // Filter out the button to remove
+    const updatedButtons = step.buttons.filter((_, idx) => idx !== buttonIndex);
+    
+    // Update the step with filtered buttons
+    updateStep(stepIndex, { buttons: updatedButtons.length > 0 ? updatedButtons : undefined });
+  };
+  
+  // Toggle image on message
+  const toggleImageOnMessage = (stepIndex: number) => {
+    const step = steps[stepIndex];
+    if (!step) return;
+    
+    // If image already exists, remove it
+    if (step.imageUrl) {
+      updateStep(stepIndex, { 
+        imageUrl: undefined, 
+        caption: undefined 
+      });
+      return;
+    }
+    
+    // Add placeholder for image
+    updateStep(stepIndex, { 
+      imageUrl: '', 
+      caption: ''
+    });
+  };
+  
   const removeStep = (index: number) => {
     setSteps(steps.filter((_, i) => i !== index));
   };
 
+  // Add new step with default values based on sender
+  const addStepBySender = (sender: 'me' | 'them') => {
+    setSteps([...steps, {
+      text: '',
+      sender,
+      delay: 1000, // Default to 1 second delay
+      type: 'text',
+      isBusinessMessage: sender === 'them' // Set business message only for "them" sender
+    }]);
+    
+    // Scroll to the newly added step after render
+    setTimeout(() => {
+      const newIndex = steps.length;
+      stepRefs.current[newIndex]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }, 100);
+  };
+
+  // Handle form submission - start conversation
   const handleFormSubmit = () => {
     if (steps.length === 0) {
       setConversationError('Please add at least one step to the conversation');
       return;
     }
-    onStartConversation(steps);
+    
+    // Process steps to create proper conversation flow
+    const processedSteps = processStepsForConversation(steps);
+    onStartConversation(processedSteps);
     setConversationError('');
   };
 
-  const handleAddTextMessage = () => {
-    if (newTextMessage.text.trim()) {
-      onAddMessage({
-        text: newTextMessage.text,
-        sender: newTextMessage.sender,
-        type: 'text'
-      });
-      setNewTextMessage({ ...newTextMessage, text: '' });
-    }
-  };
-
-  const handleAddBusinessMessage = () => {
-    if (businessMessage.text.trim()) {
-      // Format the business message with phone number highlight if needed
-      let formattedText = businessMessage.text;
+  // Process steps to extract buttons as separate message steps
+  const processStepsForConversation = (stepsToProcess: ConversationStep[]): ConversationStep[] => {
+    const processedSteps: ConversationStep[] = [];
+    
+    stepsToProcess.forEach(step => {
+      // Add the main message step (without buttons property)
+      const { buttons, ...mainStep } = step;
       
-      if (businessMessage.highlightedText) {
-        formattedText = formattedText.replace(
-          businessMessage.highlightedText, 
-          `*${businessMessage.highlightedText}*`
-        );
-      }
+      // Ensure imageUrl and caption are preserved in the processed step
+      const processedStep = {
+        ...mainStep,
+        type: mainStep.imageUrl ? 'image' : mainStep.type || 'text'
+      };
       
-      // Add the main message
-      onAddMessage({
-        text: formattedText,
-        sender: businessMessage.sender,
-        type: 'text',
-        isBusinessMessage: true
-      });
+      processedSteps.push(processedStep);
       
-      // Add option buttons as separate messages if there are any
-      if (businessMessage.options.length > 0) {
-        businessMessage.options.forEach(option => {
-          onAddMessage({
-            text: option,
-            sender: businessMessage.sender,
+      // Add button steps if present
+      if (buttons && buttons.length > 0) {
+        buttons.forEach(button => {
+          processedSteps.push({
+            text: button.text,
+            sender: step.sender,
             type: 'button',
-            buttonText: option,
+            buttonText: button.text,
             isBusinessMessage: true,
-            openLinkInWebView: linkOpeningBehavior === 'webview'
+            delay: 0,
+            link: button.url,
+            openLinkInWebView: button.openInWebView
           });
         });
       }
-      
-      // Clear the input
-      setBusinessMessage({
-        ...businessMessage,
-        text: ''
-      });
-    }
+    });
+    
+    return processedSteps;
   };
 
-  const addOption = () => {
-    setBusinessMessage({
-      ...businessMessage,
-      options: [...businessMessage.options, '']
-    });
-  };
-
-  const updateOption = (index: number, value: string) => {
-    const newOptions = [...businessMessage.options];
-    newOptions[index] = value;
-    setBusinessMessage({
-      ...businessMessage,
-      options: newOptions
-    });
-  };
-
-  const removeOption = (index: number) => {
-    setBusinessMessage({
-      ...businessMessage,
-      options: businessMessage.options.filter((_, i) => i !== index)
-    });
-  };
+  // ... existing message handlers ...
 
   const handleTemplateAdd = (template: typeof STEP_TEMPLATES[number]) => {
-    const newSteps = [...steps];
-    
-    // Add the main message
-    newSteps.push({
+    // Create main message with buttons attached
+    const mainMessage: ConversationStep = {
       ...template.template,
       text: template.template.text
-    });
+    };
     
-    // Add buttons if they exist
+    // If template has buttons, add them to the main message as buttons array
     if (template.buttons) {
-      template.buttons.forEach(buttonText => {
-        newSteps.push({
-          text: buttonText,
-          sender: 'them',
-          type: 'button',
-          isBusinessMessage: true,
-          delay: 0,
-          buttonText
-        });
-      });
+      mainMessage.buttons = template.buttons.map(text => ({
+        text,
+        openInWebView: true
+      }));
     }
     
-    setSteps(newSteps);
+    // Add the new message to steps
+    setSteps([...steps, mainMessage]);
   };
 
-  useEffect(() => {
-    if (showJsonPreview) {
-      setConversationFlow(JSON.stringify(steps, null, 2));
-    }
-  }, [steps, showJsonPreview]);
-
-  const addStepBySender = (sender: 'me' | 'them') => {
-    setSteps([...steps, {
-      text: '',
-      sender,
-      delay: 1000,
-      type: 'text',
-      isBusinessMessage: false
-    }]);
-  };
+  // ... other existing functions ...
 
   const duplicateStep = (index: number) => {
     const newSteps = [...steps];
@@ -1019,26 +1068,7 @@ const ControlPanel = ({
     setSteps(newSteps);
   };
 
-  const handleSwitchToJsonView = () => {
-    try {
-      setConversationFlow(JSON.stringify(steps, null, 2));
-      setShowJsonPreview(true);
-      setConversationError('');
-    } catch (error) {
-      setConversationError('Error converting steps to JSON');
-    }
-  };
-
-  const handleSwitchToVisualView = () => {
-    try {
-      const parsed = JSON.parse(conversationFlow);
-      setSteps(parsed);
-      setShowJsonPreview(false);
-      setConversationError('');
-    } catch (error) {
-      setConversationError('Invalid JSON format. Fix the errors before switching to Visual Editor.');
-    }
-  };
+  // ... other existing editor functions ...
 
   const handlePreview = () => {
     if (steps.length === 0) {
@@ -1046,55 +1076,85 @@ const ControlPanel = ({
       return;
     }
     
-    const previewMessages = steps.map((step, index) => ({
-      id: `preview-${index}`,
-      timestamp: new Date(),
-      status: 'sent' as const,
-      type: step.type,
-      buttonText: step.buttonText,
-      isBusinessMessage: step.isBusinessMessage,
-      link: step.link,
-      openLinkInWebView: step.openLinkInWebView,  // Preserve the openLinkInWebView property
-      imageUrl: step.imageUrl,
-      caption: step.caption,
-      text: step.text,
-      sender: step.sender
-    }));
-    
-    setPreviewMessages(previewMessages);
+    // Process steps to create preview messages
+    const previewMsgs = processStepsForPreview(steps);
+    setPreviewMessages(previewMsgs);
     setShowPreview(true);
+  };
+  
+  // Process steps to create preview messages
+  const processStepsForPreview = (stepsToPreview: ConversationStep[]): Message[] => {
+    const previewMsgs: Message[] = [];
+    
+    stepsToPreview.forEach((step, index) => {
+      // Create the main message
+      const mainMessage: Message = {
+        id: `preview-${index}`,
+        timestamp: new Date(),
+        status: 'sent',
+        text: step.text,
+        sender: step.sender,
+        type: step.imageUrl ? 'image' : 'text',
+        isBusinessMessage: step.sender === 'them' && (step.isBusinessMessage !== false),
+        imageUrl: step.imageUrl,
+        caption: step.caption
+      };
+      
+      previewMsgs.push(mainMessage);
+      
+      // If the message has buttons, add them as separate messages
+      if (step.buttons && step.buttons.length > 0) {
+        step.buttons.forEach((button, btnIndex) => {
+          const buttonMessage: Message = {
+            id: `preview-${index}-btn-${btnIndex}`,
+            timestamp: new Date(),
+            status: 'sent',
+            text: button.text,
+            buttonText: button.text,
+            sender: step.sender,
+            type: 'button',
+            isBusinessMessage: true,
+            link: button.url,
+            openLinkInWebView: button.openInWebView
+          };
+          
+          previewMsgs.push(buttonMessage);
+        });
+      }
+    });
+    
+    return previewMsgs;
+  };
+
+  // ... existing move functions ...
+
+  const handleSwitchToVisualView = () => {
+    try {
+      const parsed = JSON.parse(conversationFlow);
+      setSteps(parsed);
+      setConversationError('');
+    } catch (error) {
+      setConversationError('Invalid JSON format - please fix before switching views');
+      return;
+    }
+  };
+
+  const handleSwitchToJsonView = () => {
+    setConversationFlow(JSON.stringify(steps, null, 2));
   };
 
   const moveStepUp = (index: number) => {
-    if (index > 0) {
-      const newSteps = [...steps];
-      [newSteps[index - 1], newSteps[index]] = [newSteps[index], newSteps[index - 1]];
-      setSteps(newSteps);
-      
-      // Scroll the moved message into view after state update
-      setTimeout(() => {
-        stepRefs.current[index - 1]?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        });
-      }, 0);
-    }
+    if (index === 0) return;
+    const newSteps = [...steps];
+    [newSteps[index - 1], newSteps[index]] = [newSteps[index], newSteps[index - 1]];
+    setSteps(newSteps);
   };
 
   const moveStepDown = (index: number) => {
-    if (index < steps.length - 1) {
-      const newSteps = [...steps];
-      [newSteps[index], newSteps[index + 1]] = [newSteps[index + 1], newSteps[index]];
-      setSteps(newSteps);
-      
-      // Scroll the moved message into view after state update
-      setTimeout(() => {
-        stepRefs.current[index + 1]?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        });
-      }, 0);
-    }
+    if (index === steps.length - 1) return;
+    const newSteps = [...steps];
+    [newSteps[index], newSteps[index + 1]] = [newSteps[index + 1], newSteps[index]];
+    setSteps(newSteps);
   };
 
   return (
@@ -1140,572 +1200,432 @@ const ControlPanel = ({
       </Collapsible>
       
       <Section>
-        <SectionTitle>Add New Message</SectionTitle>
+        <SectionTitle>
+          Create Conversation
+          <IconButton 
+            onClick={() => setShowHelp(!showHelp)} 
+            title="Show/hide help"
+            style={{ marginLeft: '8px', background: 'transparent', padding: '0' }}
+          >
+            <HelpCircle size={16} />
+          </IconButton>
+        </SectionTitle>
         
-        <MessageTypeSelector>
-          <MessageTypeButton 
-            active={messageType === 'text'} 
-            onClick={() => setMessageType('text')}
-          >
-            Text Message
-          </MessageTypeButton>
-          <MessageTypeButton 
-            active={messageType === 'business'} 
-            onClick={() => setMessageType('business')}
-          >
-            Business Message
-          </MessageTypeButton>
-          <MessageTypeButton 
-            active={messageType === 'conversation'} 
-            onClick={() => setMessageType('conversation')}
-          >
-            Conversation Flow
-          </MessageTypeButton>
-        </MessageTypeSelector>
+        {showHelp && (
+          <HelpPanel>
+            <p>
+              Create a WhatsApp conversation by adding messages below. Enter your text first, then optionally add buttons or an image. 
+              Choose who sends the message using the sender toggle in the top right of each message card.
+            </p>
+            <Button variant="link" onClick={() => setShowHelp(false)}>Hide help</Button>
+          </HelpPanel>
+        )}
         
-        {messageType === 'text' ? (
-          <MessageInputContainer>
+        <ConversationFlowContainer>
+          <EditorTabs>
+            <EditorTab 
+              active={editorMode === 'visual'} 
+              onClick={() => {
+                if (editorMode === 'json') {
+                  handleSwitchToVisualView();
+                }
+                setEditorMode('visual');
+              }}
+            >
+              Visual Editor
+            </EditorTab>
+            <EditorTab 
+              active={editorMode === 'json'} 
+              onClick={() => {
+                handleSwitchToJsonView();
+                setEditorMode('json');
+              }}
+            >
+              JSON Editor
+            </EditorTab>
+            <EditorTab
+              active={editorMode === 'saved'}
+              onClick={() => setEditorMode('saved')}
+            >
+              Saved Conversations
+            </EditorTab>
+          </EditorTabs>
+          
+          {editorMode === 'saved' ? (
+            <SavedConversations
+              conversations={savedConversations}
+              onSelect={onLoadSavedConversation}
+              onDelete={onDeleteSavedConversation}
+              onSaveCurrent={onSaveCurrentConversation}
+            />
+          ) : editorMode === 'json' ? (
             <FormGroup>
-              <Label htmlFor="messageText">Message Text</Label>
-              <TextArea
-                id="messageText"
-                value={newTextMessage.text}
-                onChange={(e) => setNewTextMessage({ ...newTextMessage, text: e.target.value })}
-                placeholder="Type your message here..."
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <Label>Sender</Label>
-              <ButtonGroup>
-                <Button 
-                  variant={newTextMessage.sender === 'me' ? 'primary' : 'secondary'}
-                  onClick={() => setNewTextMessage({ ...newTextMessage, sender: 'me' })}
-                >
-                  Me
-                </Button>
-                <Button 
-                  variant={newTextMessage.sender === 'them' ? 'primary' : 'secondary'}
-                  onClick={() => setNewTextMessage({ ...newTextMessage, sender: 'them' })}
-                >
-                  {contact.name}
-                </Button>
-              </ButtonGroup>
-            </FormGroup>
-            
-            <Button variant="primary" onClick={handleAddTextMessage}>
-              Add Message
-            </Button>
-          </MessageInputContainer>
-        ) : messageType === 'business' ? (
-          <MessageInputContainer>
-            <FormGroup>
-              <Label htmlFor="businessMessageText">Business Message Text</Label>
-              <TextArea
-                id="businessMessageText"
-                value={businessMessage.text}
-                onChange={(e) => setBusinessMessage({ ...businessMessage, text: e.target.value })}
-                placeholder="Type your business message here..."
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <Label htmlFor="phoneNumber">Phone Number to Highlight (optional)</Label>
-              <Input
-                id="phoneNumber"
-                value={businessMessage.phoneNumber}
-                onChange={(e) => setBusinessMessage({ ...businessMessage, phoneNumber: e.target.value })}
-                placeholder="+91 9849364734"
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <Label htmlFor="highlightedText">Text to Highlight (optional)</Label>
-              <Input
-                id="highlightedText"
-                value={businessMessage.highlightedText}
-                onChange={(e) => setBusinessMessage({ ...businessMessage, highlightedText: e.target.value })}
-                placeholder="Text to make bold"
-              />
-            </FormGroup>
-            
-            <BusinessOptionsContainer>
-              <Label>Interactive Buttons</Label>
-              <OptionButtonsContainer>
-                {businessMessage.options.map((option, index) => (
-                  <OptionButton key={index}>
-                    <OptionInput
-                      value={option}
-                      onChange={(e) => updateOption(index, e.target.value)}
-                      placeholder={`Button ${index + 1}`}
-                    />
-                    <RemoveButton onClick={() => removeOption(index)}>
-                      Remove
-                    </RemoveButton>
-                  </OptionButton>
-                ))}
-              </OptionButtonsContainer>
-              
-              <Button variant="secondary" onClick={addOption}>
-                Add Button
-              </Button>
-            </BusinessOptionsContainer>
-            
-            <FormGroup>
-              <Label>Sender</Label>
-              <ButtonGroup>
-                <Button 
-                  variant={businessMessage.sender === 'me' ? 'primary' : 'secondary'}
-                  onClick={() => setBusinessMessage({ ...businessMessage, sender: 'me' })}
-                >
-                  Me
-                </Button>
-                <Button 
-                  variant={businessMessage.sender === 'them' ? 'primary' : 'secondary'}
-                  onClick={() => setBusinessMessage({ ...businessMessage, sender: 'them' })}
-                >
-                  {contact.name}
-                </Button>
-              </ButtonGroup>
-            </FormGroup>
-            
-            <FormGroup>
-              <Label>Link Opening Behavior</Label>
-              <RadioGroup>
-                <StyledRadioLabel isSelected={linkOpeningBehavior === 'webview'}>
-                  <RadioButton
-                    type="radio"
-                    name="link-behavior"
-                    checked={linkOpeningBehavior === 'webview'}
-                    onChange={() => setLinkOpeningBehavior('webview')}
-                  />
-                  <RadioText isSelected={linkOpeningBehavior === 'webview'}>
-                    Open in WhatsApp web view
-                  </RadioText>
-                </StyledRadioLabel>
-                <StyledRadioLabel isSelected={linkOpeningBehavior === 'newtab'}>
-                  <RadioButton
-                    type="radio"
-                    name="link-behavior"
-                    checked={linkOpeningBehavior === 'newtab'}
-                    onChange={() => setLinkOpeningBehavior('newtab')}
-                  />
-                  <RadioText isSelected={linkOpeningBehavior === 'newtab'}>
-                    Open in new browser tab
-                  </RadioText>
-                </StyledRadioLabel>
-              </RadioGroup>
-            </FormGroup>
-
-            <Button variant="primary" onClick={handleAddBusinessMessage}>
-              Add Business Message
-            </Button>
-          </MessageInputContainer>
-        ) : (
-          <ConversationFlowContainer>
-            <EditorTabs>
-              <EditorTab 
-                active={editorMode === 'visual'} 
-                onClick={() => {
-                  if (editorMode === 'json') {
-                    handleSwitchToVisualView();
+              <Label>JSON Editor</Label>
+              <ConversationTextArea
+                value={conversationFlow}
+                onChange={(e) => {
+                  setConversationFlow(e.target.value);
+                  try {
+                    const parsed = JSON.parse(e.target.value);
+                    setSteps(parsed);
+                    setConversationError('');
+                  } catch (error) {
+                    setConversationError('Invalid JSON format');
                   }
-                  setEditorMode('visual');
                 }}
-              >
-                Visual Editor
-              </EditorTab>
-              <EditorTab 
-                active={editorMode === 'json'} 
-                onClick={() => {
-                  handleSwitchToJsonView();
-                  setEditorMode('json');
-                }}
-              >
-                JSON Editor
-              </EditorTab>
-              <EditorTab
-                active={editorMode === 'saved'}
-                onClick={() => setEditorMode('saved')}
-              >
-                Saved Conversations
-              </EditorTab>
-            </EditorTabs>
-
-            {editorMode === 'saved' ? (
-              <SavedConversations
-                conversations={savedConversations}
-                onSelect={onLoadSavedConversation}
-                onDelete={onDeleteSavedConversation}
-                onSaveCurrent={onSaveCurrentConversation}
               />
-            ) : editorMode === 'json' ? (
-              <FormGroup>
-                <Label>JSON Editor</Label>
-                <ConversationTextArea
-                  value={conversationFlow}
-                  onChange={(e) => {
-                    setConversationFlow(e.target.value);
-                    try {
-                      const parsed = JSON.parse(e.target.value);
-                      setSteps(parsed);
-                      setConversationError('');
-                    } catch (error) {
-                      setConversationError('Invalid JSON format');
-                    }
-                  }}
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
-                  {conversationError && <ErrorMessage>{conversationError}</ErrorMessage>}
-                  <ActionButton 
-                    variant="primary" 
-                    onClick={handleFormSubmit}
-                    style={{ marginLeft: 'auto' }}
-                    disabled={!!conversationError}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
+                {conversationError && <ErrorMessage>{conversationError}</ErrorMessage>}
+                <ActionButton 
+                  variant="primary" 
+                  onClick={handleFormSubmit}
+                  style={{ marginLeft: 'auto' }}
+                  disabled={!!conversationError}
+                >
+                  Start Conversation
+                </ActionButton>
+              </div>
+            </FormGroup>
+          ) : (
+            <>
+              <QuickActionsBar>
+                <Label>Quick Add Template:</Label>
+                {STEP_TEMPLATES.map((template, index) => (
+                  <TemplateButton
+                    key={index}
+                    variant="secondary"
+                    onClick={() => handleTemplateAdd(template)}
                   >
-                    Start Conversation
-                  </ActionButton>
-                </div>
-              </FormGroup>
-            ) : (
-              <>
-                <QuickActionsBar>
-                  <Label>Add Template:</Label>
-                  {STEP_TEMPLATES.map((template, index) => (
-                    <TemplateButton
-                      key={index}
-                      variant="secondary"
-                      onClick={() => handleTemplateAdd(template)}
-                    >
-                      {template.name}
-                    </TemplateButton>
-                  ))}
-                </QuickActionsBar>
-
-                {steps.length === 0 ? (
-                  <EmptyState>
-                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>💬</div>
-                    <h3>No conversation steps yet</h3>
-                    <p style={{ margin: '8px 0 24px 0', color: 'var(--text-secondary)' }}>
-                      Add steps to create your conversation flow
-                    </p>
-                    <ButtonGroup>
-                      <ActionButton variant="secondary" onClick={() => addStepBySender('them')}>
-                        Add Message from Them
-                      </ActionButton>
-                      <ActionButton variant="secondary" onClick={() => addStepBySender('me')}>
-                        Add Message from Me
-                      </ActionButton>
-                    </ButtonGroup>
-                  </EmptyState>
-                ) : (
-                  <StepsContainer className="steps-container">
-                    {steps.map((step, index) => (
-                      <StepForm 
-                        key={index}
-                        ref={(el: HTMLDivElement | null) => {
-                          stepRefs.current[index] = el;
-                        }}
-                      >
-                        <StepHeader>
-                          <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <StepIndexBadge>{index + 1}</StepIndexBadge>
-                          </div>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <IconButton 
-                              onClick={() => moveStepUp(index)}
-                              title="Move Up"
-                              disabled={index === 0}
-                            >
-                              <ArrowUp />
-                            </IconButton>
-                            <IconButton 
-                              onClick={() => moveStepDown(index)}
-                              title="Move Down"
-                              disabled={index === steps.length - 1}
-                            >
-                              <ArrowDown />
-                            </IconButton>
-                            <IconButton 
-                              onClick={() => duplicateStep(index)}
-                              title="Duplicate"
-                            >
-                              <Copy />
-                            </IconButton>
-                            <IconButton 
-                              variant="danger" 
-                              onClick={() => removeStep(index)}
-                              title="Delete"
-                            >
-                              <Trash2 />
-                            </IconButton>
-                          </div>
-                        </StepHeader>
-
-                        <StepFormContent>
-                          <StepTypeSelector>
-                            <Label style={{ marginRight: '8px', alignSelf: 'center' }}>Message from:</Label>
-                            <TypeSelectorButton 
-                              active={step.sender === 'me'}
-                              onClick={() => updateStep(index, { sender: 'me' })}
-                            >
-                              Me
-                            </TypeSelectorButton>
-                            <TypeSelectorButton 
-                              active={step.sender === 'them'}
-                              onClick={() => updateStep(index, { sender: 'them' })}
-                            >
-                              {contact.name}
-                            </TypeSelectorButton>
-                          </StepTypeSelector>
-
-                          <StepTypeSelector>
-                            <Label style={{ marginRight: '8px', alignSelf: 'center' }}>Type:</Label>
-                            <TypeSelectorButton 
-                              active={step.type !== 'image'}
-                              onClick={() => updateStep(index, { 
-                                type: 'text',
-                                imageUrl: undefined,
-                                caption: undefined
-                              })}
-                            >
-                              Message
-                            </TypeSelectorButton>
-                            <TypeSelectorButton 
-                              active={step.type === 'image'}
-                              onClick={() => updateStep(index, { 
-                                type: 'image',
-                                text: ''
-                              })}
-                            >
-                              Image
-                            </TypeSelectorButton>
-                            <TypeSelectorButton 
-                              active={step.type === 'button'}
-                              onClick={() => updateStep(index, { 
-                                type: 'button',
-                                isBusinessMessage: true
-                              })}
-                            >
-                              Button
-                            </TypeSelectorButton>
-                          </StepTypeSelector>
-
-                          {step.type === 'image' ? (
-                            <>
-                              <FormGroup>
-                                <ImageUploadButton>
-                                  <span>📷 {step.imageUrl ? 'Change Image' : 'Upload Image'}</span>
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                        const reader = new FileReader();
-                                        reader.onload = (event) => {
-                                          updateStep(index, { 
-                                            imageUrl: event.target?.result as string,
-                                            text: file.name
-                                          });
-                                        };
-                                        reader.readAsDataURL(file);
-                                      }
-                                    }}
-                                  />
-                                </ImageUploadButton>
-                                
-                                {step.imageUrl && (
-                                  <ImagePreview>
-                                    <img src={step.imageUrl} alt="Preview" />
-                                    <RemoveImageButton
-                                      variant="danger"
-                                      onClick={() => updateStep(index, { 
-                                        imageUrl: undefined,
-                                        text: '',
-                                        caption: undefined
-                                      })}
-                                      title="Remove Image"
-                                    >
-                                      ✕
-                                    </RemoveImageButton>
-                                  </ImagePreview>
-                                )}
-                              </FormGroup>
-                              
-                              <FormGroup>
-                                <Label>Caption (optional)</Label>
-                                <Input
-                                  value={step.caption || ''}
-                                  onChange={(e) => updateStep(index, { 
-                                    caption: e.target.value,
-                                    text: e.target.value // Keep text in sync for compatibility
-                                  })}
-                                  placeholder="Add a caption..."
-                                />
-                              </FormGroup>
-                            </>
-                          ) : step.type === 'button' ? (
-                            <>
-                              <FormGroup>
-                                <Label>Button Text</Label>
-                                <Input
-                                  value={step.buttonText || step.text}
-                                  onChange={(e) => updateStep(index, { 
-                                    text: e.target.value,
-                                    buttonText: e.target.value 
-                                  })}
-                                  placeholder="Enter button text..."
-                                />
-                              </FormGroup>
-                              <FormGroup>
-                                <Label>Link URL (optional)</Label>
-                                <Input
-                                  value={step.link || ''}
-                                  onChange={(e) => updateStep(index, { link: e.target.value })}
-                                  placeholder="https://..."
-                                  type="url"
-                                />
-                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                                  If provided, clicking the button will open this link
-                                </div>
-                              </FormGroup>
-                              
-                              {/* Add option for link opening behavior */}
-                              {step.link && (
-                                <FormGroup>
-                                  <Label>Link Opening Behavior</Label>
-                                  <RadioGroup>
-                                    <StyledRadioLabel isSelected={step.openLinkInWebView !== false}>
-                                      <RadioButton
-                                        type="radio"
-                                        name={`link-behavior-${index}`}
-                                        checked={step.openLinkInWebView !== false}
-                                        onChange={() => updateStep(index, { openLinkInWebView: true })}
-                                      />
-                                      <RadioText isSelected={step.openLinkInWebView !== false}>
-                                        Open in WhatsApp web view
-                                      </RadioText>
-                                    </StyledRadioLabel>
-                                    <StyledRadioLabel isSelected={step.openLinkInWebView === false}>
-                                      <RadioButton
-                                        type="radio"
-                                        name={`link-behavior-${index}`}
-                                        checked={step.openLinkInWebView === false}
-                                        onChange={() => updateStep(index, { openLinkInWebView: false })}
-                                      />
-                                      <RadioText isSelected={step.openLinkInWebView === false}>
-                                        Open in new browser tab
-                                      </RadioText>
-                                    </StyledRadioLabel>
-                                  </RadioGroup>
-                                </FormGroup>
-                              )}
-                            </>
-                          ) : (
-                            <FormGroup>
-                              <Label>Message Text</Label>
-                              <TextArea
-                                value={step.text}
-                                onChange={(e) => updateStep(index, { text: e.target.value })}
-                                placeholder="Enter your message..."
-                                style={{ minHeight: '100px' }}
-                              />
-                            </FormGroup>
-                          )}
-
-                          <FormGroup>
-                            <Label>Delay before showing</Label>
-                            <DelayInput>
-                              <DelaySlider
-                                type="range"
-                                min="0"
-                                max="3000"
-                                step="100"
-                                value={step.delay ?? 0}
-                                onChange={(e) => updateStep(index, { delay: Number(e.target.value) })}
-                              />
-                              <Input
-                                type="number"
-                                value={step.delay ?? 0}
-                                onChange={(e) => updateStep(index, { delay: Math.max(0, Number(e.target.value)) })}
-                                min="0"
-                                step="100"
-                                style={{ width: '80px' }}
-                              />
-                              <Label>ms</Label>
-                            </DelayInput>
-                            <div style={{ display: 'flex', gap: '4px', marginTop: '8px', flexWrap: 'wrap' }}>
-                              {[0, 500, 1000, 1500, 2000].map(delay => (
-                                <DelayPreset
-                                  key={delay}
-                                  active={step.delay === delay}
-                                  onClick={() => updateStep(index, { delay })}
-                                >
-                                  {delay}ms
-                                </DelayPreset>
-                              ))}
-                            </div>
-                          </FormGroup>
-
-                          {step.sender === 'them' && (
-                            <label style={{ display: 'flex', alignItems: 'center', marginTop: '12px' }}>
-                              <input
-                                type="checkbox"
-                                checked={step.isBusinessMessage || false}
-                                onChange={(e) => updateStep(index, { isBusinessMessage: e.target.checked })}
-                                style={{ marginRight: '8px' }}
-                              />
-                              Show as business message
-                            </label>
-                          )}
-                        </StepFormContent>
-                      </StepForm>
-                    ))}
-                  </StepsContainer>
-                )}
-
-                <ActionBar>
+                    {template.name}
+                  </TemplateButton>
+                ))}
+              </QuickActionsBar>
+              
+              {steps.length === 0 ? (
+                <EmptyState>
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>💬</div>
+                  <h3>Create your WhatsApp conversation</h3>
+                  <p style={{ margin: '8px 0 24px 0', color: 'var(--text-secondary)' }}>
+                    Start by adding your first message:
+                  </p>
                   <ButtonGroup>
                     <ActionButton variant="secondary" onClick={() => addStepBySender('them')}>
-                      + Message from Them
+                      Add Message from {contact.name}
                     </ActionButton>
                     <ActionButton variant="secondary" onClick={() => addStepBySender('me')}>
-                      + Message from Me
+                      Add My Message
                     </ActionButton>
                   </ButtonGroup>
-                  <ButtonGroup>
-                    <ActionButton 
-                      variant="secondary" 
-                      onClick={handlePreview}
+                </EmptyState>
+              ) : (
+                <StepsContainer className="steps-container">
+                  {steps.map((step, index) => (
+                    <StepForm 
+                      key={index}
+                      ref={(el: HTMLDivElement | null) => {
+                        stepRefs.current[index] = el;
+                      }}
                     >
-                      Preview Flow
-                    </ActionButton>
-                    <ActionButton variant="primary" onClick={handleFormSubmit}>
-                      Start Conversation
-                    </ActionButton>
-                  </ButtonGroup>
-                </ActionBar>
+                      <StepHeader>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <StepIndexBadge>{index + 1}</StepIndexBadge>
+                          {step.type === 'button' ? 'Button' : 'Message'}
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <IconButton 
+                            onClick={() => moveStepUp(index)}
+                            title="Move Up"
+                            disabled={index === 0}
+                          >
+                            <ArrowUp />
+                          </IconButton>
+                          <IconButton 
+                            onClick={() => moveStepDown(index)}
+                            title="Move Down"
+                            disabled={index === steps.length - 1}
+                          >
+                            <ArrowDown />
+                          </IconButton>
+                          <IconButton 
+                            onClick={() => duplicateStep(index)}
+                            title="Duplicate"
+                          >
+                            <Copy />
+                          </IconButton>
+                          <IconButton 
+                            variant="danger" 
+                            onClick={() => removeStep(index)}
+                            title="Delete"
+                          >
+                            <Trash2 />
+                          </IconButton>
+                        </div>
+                      </StepHeader>
+                      
+                      <StepFormContent>
+                        {/* Sender toggle in top right corner */}
+                        <MessageSenderToggle>
+                          <UserCircle size={14} />
+                          <SenderOption 
+                            active={step.sender === 'me'}
+                            onClick={() => updateStep(index, { sender: 'me' })}
+                          >
+                            Me
+                          </SenderOption>
+                          <SenderOption 
+                            active={step.sender === 'them'} 
+                            onClick={() => updateStep(index, { sender: 'them' })}
+                          >
+                            {contact.name}
+                          </SenderOption>
+                        </MessageSenderToggle>
+                        
+                        {/* Always show text field first regardless of type */}
+                        <FormGroup>
+                          <Label>Message</Label>
+                          <TextArea
+                            value={step.text}
+                            onChange={(e) => updateStep(index, { text: e.target.value })}
+                            placeholder="Enter your message text here..."
+                            style={{ minHeight: '100px' }}
+                          />
+                        </FormGroup>
 
-                <PreviewOverlay show={showPreview}>
-                  <PreviewContainer>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                      <h2>Conversation Preview</h2>
-                      <Button variant="secondary" onClick={() => setShowPreview(false)}>
-                        Close Preview
-                      </Button>
-                    </div>
-                    <PhonePreview
-                      contact={contact}
-                      messages={previewMessages}
-                      onUpdateMessage={onUpdateMessage}
-                    />
-                  </PreviewContainer>
-                </PreviewOverlay>
-              </>
-            )}
-          </ConversationFlowContainer>
-        )}
+                        {/* Attachment options below text */}
+                        <AttachmentOptions>
+                          <AttachmentButton 
+                            onClick={() => toggleImageOnMessage(index)}
+                            active={!!step.imageUrl}
+                          >
+                            <Image size={16} /> 
+                            {step.imageUrl ? 'Remove Image' : 'Add Image'}
+                          </AttachmentButton>
+                          
+                          <AttachmentButton
+                            onClick={() => addButtonToMessage(index)}
+                            active={step.buttons && step.buttons.length > 0}
+                          >
+                            <PlusCircle size={16} /> 
+                            Add Button {step.buttons ? `(${step.buttons.length}/5)` : '(0/5)'}
+                          </AttachmentButton>
+                        </AttachmentOptions>
+                        
+                        {/* Show image section if image toggled on */}
+                        {step.imageUrl !== undefined && (
+                          <ImageSection>
+                            <Label>Image</Label>
+                            <ImageUploadButton>
+                              <span>{step.imageUrl ? 'Change Image' : 'Upload Image'}</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (event) => {
+                                      // Use the message text as caption and store image URL
+                                      updateStep(index, { 
+                                        imageUrl: event.target?.result as string,
+                                        caption: step.text // Use message text as caption
+                                      });
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                              />
+                            </ImageUploadButton>
+                            
+                            {step.imageUrl && (
+                              <ImagePreview>
+                                <img src={step.imageUrl} alt="Preview" />
+                                <RemoveImageButton
+                                  variant="danger"
+                                  onClick={() => updateStep(index, { imageUrl: undefined })}
+                                  title="Remove Image"
+                                >
+                                  ✕
+                                </RemoveImageButton>
+                              </ImagePreview>
+                            )}
+                            
+                            {/* Caption note - no separate input needed */}
+                            <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                              <i>The message text above will be used as the image caption</i>
+                            </div>
+                          </ImageSection>
+                        )}
+                        
+                        {/* Show buttons section if any buttons added */}
+                        {step.buttons && step.buttons.length > 0 && (
+                          <ButtonSection>
+                            <Label>Buttons</Label>
+                            <ButtonList>
+                              {step.buttons.map((button, btnIndex) => (
+                                <ButtonItem key={btnIndex}>
+                                  <ButtonCount>{btnIndex + 1}</ButtonCount>
+                                  <div style={{ flex: 1 }}>
+                                    <Input
+                                      placeholder="Button text"
+                                      value={button.text}
+                                      onChange={(e) => updateMessageButton(
+                                        index,
+                                        btnIndex,
+                                        { text: e.target.value }
+                                      )}
+                                      style={{ marginBottom: '8px' }}
+                                    />
+                                    <Input
+                                      placeholder="URL (optional)"
+                                      value={button.url || ''}
+                                      onChange={(e) => updateMessageButton(
+                                        index,
+                                        btnIndex,
+                                        { url: e.target.value }
+                                      )}
+                                    />
+                                    
+                                    {button.url && (
+                                      <div style={{ 
+                                        marginTop: '8px', 
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '2px',
+                                        fontSize: '13px'
+                                      }}>
+                                        <label style={{ marginRight: '16px' }}>
+                                          <input
+                                            type="radio"
+                                            name={`button-${index}-${btnIndex}-target`}
+                                            checked={button.openInWebView}
+                                            onChange={() => updateMessageButton(
+                                              index,
+                                              btnIndex,
+                                              { openInWebView: true }
+                                            )}
+                                            style={{ marginRight: '4px' }}
+                                          />
+                                          Open in WhatsApp
+                                        </label>
+                                        <label>
+                                          <input
+                                            type="radio"
+                                            name={`button-${index}-${btnIndex}-target`}
+                                            checked={!button.openInWebView}
+                                            onChange={() => updateMessageButton(
+                                              index,
+                                              btnIndex,
+                                              { openInWebView: false }
+                                            )}
+                                            style={{ marginRight: '4px' }}
+                                          />
+                                          Open in new tab
+                                        </label>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <IconButton
+                                    variant="danger"
+                                    onClick={() => removeButtonFromMessage(index, btnIndex)}
+                                  >
+                                    <Trash2 size={16} />
+                                  </IconButton>
+                                </ButtonItem>
+                              ))}
+                            </ButtonList>
+                            
+                            {step.buttons.length < 5 && (
+                              <div style={{ marginTop: '12px', textAlign: 'right' }}>
+                                <Button 
+                                  onClick={() => addButtonToMessage(index)}
+                                  variant="secondary"
+                                >
+                                  Add Another Button
+                                </Button>
+                              </div>
+                            )}
+                          </ButtonSection>
+                        )}
+                        
+                        {/* Simplified delay selector */}
+                        <DelaySelector>
+                          <Clock size={14} style={{ marginRight: '4px' }} />
+                          <span>Delay:</span>
+                          <DelayOption 
+                            active={step.delay === 0}
+                            onClick={() => updateStep(index, { delay: 0 })}
+                          >
+                            0ms
+                          </DelayOption>
+                          <DelayOption 
+                            active={step.delay === 1000}
+                            onClick={() => updateStep(index, { delay: 1000 })}
+                          >
+                            1s (default)
+                          </DelayOption>
+                          <DelayOption 
+                            active={step.delay === 2000}
+                            onClick={() => updateStep(index, { delay: 2000 })}
+                          >
+                            2s
+                          </DelayOption>
+                          <span>or</span>
+                          <Input
+                            type="number"
+                            value={step.delay ?? 0}
+                            onChange={(e) => updateStep(index, { delay: Math.max(0, Number(e.target.value)) })}
+                            min="0"
+                            step="100"
+                            style={{ width: '70px', padding: '4px', fontSize: '13px' }}
+                          />
+                          <span>ms</span>
+                        </DelaySelector>
+                      </StepFormContent>
+                    </StepForm>
+                  ))}
+                </StepsContainer>
+              )}
+              
+              <ActionBar>
+                <ButtonGroup>
+                  <ActionButton variant="secondary" onClick={() => addStepBySender('them')}>
+                    + Message from {contact.name}
+                  </ActionButton>
+                  <ActionButton variant="secondary" onClick={() => addStepBySender('me')}>
+                    + My Message
+                  </ActionButton>
+                </ButtonGroup>
+                <ButtonGroup>
+                  <ActionButton 
+                    variant="secondary" 
+                    onClick={handlePreview}
+                  >
+                    Preview Flow
+                  </ActionButton>
+                  <ActionButton variant="primary" onClick={handleFormSubmit}>
+                    Start Conversation
+                  </ActionButton>
+                </ButtonGroup>
+              </ActionBar>
+              
+              <PreviewOverlay show={showPreview}>
+                <PreviewContainer>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h2>Conversation Preview</h2>
+                    <Button variant="secondary" onClick={() => setShowPreview(false)}>
+                      Close Preview
+                    </Button>
+                  </div>
+                  <PhonePreview
+                    contact={contact}
+                    messages={previewMessages}
+                    onUpdateMessage={onUpdateMessage}
+                  />
+                </PreviewContainer>
+              </PreviewOverlay>
+            </>
+          )}
+        </ConversationFlowContainer>
       </Section>
       
       <Section>
@@ -1753,5 +1673,206 @@ const ControlPanel = ({
     </Container>
   );
 };
+
+// Add this new styled component for the help panel
+const HelpPanel = styled.div`
+  background-color: #f0f9ff;
+  border-left: 4px solid var(--whatsapp-blue);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  
+  p {
+    margin: 0 0 8px 0;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+`;
+
+const MessageTypeCard = styled.div<{ active: boolean }>`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  border-radius: 8px;
+  background-color: ${props => props.active ? 'rgba(37, 211, 102, 0.1)' : 'white'};
+  border: 1px solid ${props => props.active ? 'var(--whatsapp-teal)' : 'var(--border-color)'};
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  }
+  
+  svg {
+    margin-bottom: 8px;
+    color: ${props => props.active ? 'var(--whatsapp-teal)' : 'var(--text-secondary)'};
+  }
+`
+
+const MessageTypeTitle = styled.span`
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+`
+
+const MessageTypeDescription = styled.span`
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-top: 4px;
+`
+
+const DelayPresetContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+`
+
+const DelayPresetRow = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+`
+
+const DelayOption = styled.button<{ active?: boolean }>`
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  border: 1px solid ${props => props.active ? 'var(--whatsapp-teal)' : 'var(--border-color)'};
+  background: ${props => props.active ? 'var(--whatsapp-teal)' : 'white'};
+  color: ${props => props.active ? 'white' : 'var(--text-primary)'};
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  
+  &:hover {
+    background: ${props => props.active ? 'var(--whatsapp-teal)' : 'rgba(37, 211, 102, 0.1)'};
+  }
+`
+
+const ButtonOptions = styled.div`
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+  border: 1px solid var(--border-color);
+`
+
+const ButtonOptionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+`
+
+const ButtonList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+`
+
+const ButtonItem = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+`
+
+const ButtonCount = styled.div`
+  background-color: var(--whatsapp-teal);
+  color: white;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 500;
+`
+
+const MessageSenderToggle = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+`;
+
+const SenderOption = styled.button<{ active: boolean }>`
+  background: ${props => props.active ? 'var(--whatsapp-teal)' : 'transparent'};
+  color: ${props => props.active ? 'white' : 'var(--text-secondary)'};
+  border: 1px solid ${props => props.active ? 'var(--whatsapp-teal)' : 'var(--border-color)'};
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: ${props => props.active ? 'var(--whatsapp-teal)' : 'rgba(0,0,0,0.05)'};
+  }
+`;
+
+const AttachmentOptions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+`;
+
+const AttachmentButton = styled.button<{ active?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: ${props => props.active ? 'rgba(37, 211, 102, 0.1)' : 'transparent'};
+  border: 1px solid ${props => props.active ? 'var(--whatsapp-teal)' : 'var(--border-color)'};
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(0,0,0,0.05);
+  }
+`;
+
+const ImageSection = styled.div`
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+`;
+
+const ButtonSection = styled.div`
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+`;
+
+const DelaySelector = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+`;
 
 export default ControlPanel;

@@ -176,104 +176,49 @@ const PlayPauseButton = styled.button`
 `
 
 function App() {
+  // Initialize default state
   const [contact, setContact] = useState<Contact>({
-    name: 'John Doe',
-    avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
+    name: 'Business',
+    avatar: 'https://www.pppacademygroup.com/wp-content/uploads/2024/05/whatsapp-logo-0DBD89C8E2-seeklogo.com_.png',
     status: 'online',
     lastSeen: new Date()
   });
   const [isControlPanelCollapsed, setIsControlPanelCollapsed] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-
-  // Lifted state from ControlPanel
-  const [contactSettingsOpen, setContactSettingsOpen] = useState(false);
+  
+  // State for message type and settings
+  const [contactSettingsOpen, setContactSettingsOpen] = useState(false); // Closed by default
   const [messageType, setMessageType] = useState<'text' | 'business' | 'conversation'>('conversation');
   const [newTextMessage, setNewTextMessage] = useState({
     text: '',
-    sender: 'me' as 'me' | 'them'
+    sender: 'me' as const
   });
   const [businessMessage, setBusinessMessage] = useState({
     text: '',
     options: ['Yes', 'No'],
     phoneNumber: '+91 984XXXXX34',
     highlightedText: '',
-    sender: 'them' as 'me' | 'them'
+    sender: 'them' as const
   });
-  const [conversationFlow, setConversationFlow] = useState(`[
-    {
-      "text": "Is +91 984XXXXX34 linked to your business bank accounts?",
-      "sender": "them",
-      "isBusinessMessage": true,
-      "delay": 1000
-    },
-    {
-      "text": "Yes",
-      "sender": "them",
-      "type": "button",
-      "isBusinessMessage": true,
-      "delay": 0
-    },
-    {
-      "text": "No",
-      "sender": "them",
-      "type": "button",
-      "isBusinessMessage": true,
-      "delay": 0
-    },
-    {
-      "text": "Yes",
-      "sender": "me",
-      "delay": 2000
-    },
-    {
-      "text": "We will now take your bank account, PAN & GST details via an RBI licensed Account Aggregator.",
-      "sender": "them",
-      "delay": 1500
-    },
-    {
-      "text": "This will allow us to underwrite you and give you your loan offer!",
-      "sender": "them",
-      "delay": 1000
-    },
-    {
-      "text": "Please click on this link to share consent",
-      "sender": "them",
-      "delay": 1000
-    },
-    {
-      "text": "Share consent",
-      "sender": "them",
-      "type": "button",
-      "isBusinessMessage": true,
-      "delay": 0,
-      "link": "#"
-    }
-  ]`);
-  const [steps, setSteps] = useState<ConversationStep[]>(() => {
-    try {
-      return JSON.parse(conversationFlow);
-    } catch {
-      return [];
-    }
-  });
-
-  // For conversation playback
-  const [isPlayingConversation, setIsPlayingConversation] = useState(false);
-  const [conversationQueue, setConversationQueue] = useState<ConversationStep[]>([]);
-  const [savedConversation, setSavedConversation] = useState<ConversationStep[]>([]);
-
-  // Lift remaining local states from ControlPanel
+  
+  // State for conversation flow
+  const [conversationFlow, setConversationFlow] = useState<string>('[]');
+  const [steps, setSteps] = useState<ConversationStep[]>([]);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewMessages, setPreviewMessages] = useState<Message[]>([]);
   const [conversationError, setConversationError] = useState('');
-
+  
+  // Playback state
+  const [isPlayingConversation, setIsPlayingConversation] = useState(false);
+  const [conversationQueue, setConversationQueue] = useState<ConversationStep[]>([]);
+  const [savedConversation, setSavedConversation] = useState<ConversationStep[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(-1);
-
-  // Add new state for saved conversations
+  
+  // Saved conversations state
   const [savedConversations, setSavedConversations] = useState<SavedConversation[]>([]);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-  
+
   // Load saved conversations on mount
   useEffect(() => {
     setSavedConversations(conversationStorage.getAll());
@@ -411,6 +356,26 @@ function App() {
     };
 
     setMessages(prev => [...prev, newMessage]);
+
+    // If this message has buttons, add them as separate messages
+    if (step.buttons && step.buttons.length > 0) {
+      step.buttons.forEach(button => {
+        const buttonMessage: Message = {
+          id: `${Date.now().toString()}-btn-${button.text}`,
+          text: button.text,
+          buttonText: button.text,
+          sender: step.sender,
+          timestamp: new Date(),
+          status: 'sent',
+          type: 'button',
+          isBusinessMessage: true,
+          link: button.url,
+          openLinkInWebView: button.openInWebView
+        };
+
+        setMessages(prev => [...prev, buttonMessage]);
+      });
+    }
   };
 
   const updateContact = (updatedContact: Partial<Contact>) => {
@@ -444,11 +409,43 @@ function App() {
     setMessages([])
   }
 
-  // Modified startConversation to handle the current step index properly
+  // Modified startConversation to handle buttons correctly
   const startConversation = (steps: ConversationStep[]) => {
-    setSavedConversation(steps);
+    // Process steps to extract buttons as separate steps
+    const processedSteps: ConversationStep[] = [];
+    
+    steps.forEach(step => {
+      // Add the main message step (without buttons property)
+      const { buttons, ...mainStep } = step;
+      
+      // Ensure type is properly set based on content
+      const processedStep = {
+        ...mainStep,
+        type: mainStep.imageUrl ? 'image' : mainStep.type || 'text'
+      };
+      
+      processedSteps.push(processedStep);
+      
+      // Add button steps if present
+      if (buttons && buttons.length > 0) {
+        buttons.forEach(button => {
+          processedSteps.push({
+            text: button.text,
+            sender: step.sender,
+            type: 'button',
+            buttonText: button.text,
+            isBusinessMessage: true,
+            delay: 0,
+            link: button.url,
+            openLinkInWebView: button.openInWebView
+          });
+        });
+      }
+    });
+    
+    setSavedConversation(processedSteps);
     setIsPlayingConversation(true);
-    setConversationQueue(steps);
+    setConversationQueue(processedSteps);
     setCurrentStepIndex(-1);
     setMessages([]); // Clear messages when starting new conversation
   }
@@ -508,10 +505,9 @@ function App() {
     setIsPlayingConversation(true);
   };
 
-  // Update useEffect to work better with manual controls
+  // Update useEffect to work better with buttons
   useEffect(() => {
     if (!isPlayingConversation || conversationQueue.length === 0) return;
-
     const nextStep = conversationQueue[0];
     const delay = nextStep.delay ?? 1000;
     
@@ -542,7 +538,7 @@ function App() {
         isBusinessMessage: nextStep.isBusinessMessage,
         buttonText: nextStep.buttonText,
         link: nextStep.link,
-        openLinkInWebView: nextStep.openLinkInWebView,  // Preserve the openLinkInWebView property
+        openLinkInWebView: nextStep.openLinkInWebView,
         imageUrl: nextStep.imageUrl,
         caption: nextStep.caption
       };
@@ -550,6 +546,27 @@ function App() {
       setMessages(prev => [...prev, newMessage]);
       setCurrentStepIndex(prev => prev + 1);
       setConversationQueue(prev => prev.slice(1));
+      
+      // If this was a message with buttons in the original steps, add them immediately
+      // This is only needed for the manual next button, auto-play will handle them correctly
+      if (!isPlayingConversation && nextStep.buttons && nextStep.buttons.length > 0) {
+        nextStep.buttons.forEach(button => {
+          const buttonMessage: Message = {
+            id: `${Date.now().toString()}-btn-${button.text}`,
+            text: button.text,
+            buttonText: button.text,
+            sender: nextStep.sender,
+            timestamp: new Date(),
+            status: 'sent',
+            type: 'button',
+            isBusinessMessage: true,
+            link: button.url,
+            openLinkInWebView: button.openInWebView
+          };
+          
+          setMessages(prev => [...prev, buttonMessage]);
+        });
+      }
     }, delay);
     
     return () => clearTimeout(timer);
@@ -564,6 +581,7 @@ function App() {
           onUpdateMessage={updateMessage}
         />
       </PreviewSection>
+      
       <ControlSection isCollapsed={isControlPanelCollapsed}>
         {isControlPanelCollapsed ? (
           <ButtonGroup>
@@ -572,7 +590,7 @@ function App() {
               onClick={() => setIsControlPanelCollapsed(false)}
               title="Show message controls"
             >
-              <img src="/settings icon.svg" alt="Toggle controls" />
+              <img src="/settings-icon.svg" alt="Toggle controls" />
             </ToggleButton>
           </ButtonGroup>
         ) : (
@@ -582,7 +600,7 @@ function App() {
               onClick={() => setIsControlPanelCollapsed(true)}
               title="Hide message controls"
             >
-              <img src="/settings icon.svg" alt="Toggle controls" />
+              <img src="/settings-icon.svg" alt="Toggle controls" />
             </ToggleButton>
             
             <ControlPanel
@@ -623,12 +641,13 @@ function App() {
         )}
       </ControlSection>
       
+      {/* Playback controls */}
       <PlayPauseButton
         onClick={handlePlayConversation}
         title={isPlayingConversation ? "Pause conversation" : "Start/Resume conversation"}
       >
         <img 
-          src={isPlayingConversation ? "/pause icon.svg" : "/play icon.svg"} 
+          src={isPlayingConversation ? "/pause-icon.svg" : "/play-icon.svg"} 
           alt={isPlayingConversation ? "Pause" : "Play"} 
         />
       </PlayPauseButton>
@@ -653,7 +672,7 @@ function App() {
         </ArrowButton>
       </ManualControls>
 
-      {/* Add SaveConversationModal */}
+      {/* Save conversation modal */}
       <SaveConversationModal
         isOpen={isSaveModalOpen}
         onClose={() => setIsSaveModalOpen(false)}

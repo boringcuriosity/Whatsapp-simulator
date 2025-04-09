@@ -2,6 +2,12 @@ export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
 export type ContactStatus = 'online' | 'offline' | 'typing';
 export type MessageType = 'text' | 'button' | 'interactive' | 'image';
 
+export interface MessageButton {
+  text: string;
+  url?: string;
+  openInWebView: boolean;
+}
+
 export interface Message {
   id: string;
   text: string;
@@ -38,6 +44,7 @@ export interface ConversationStep {
   openLinkInWebView?: boolean; // Option to control whether links open in web view or new tab
   imageUrl?: string;
   caption?: string;
+  buttons?: MessageButton[]; // Array of buttons attached to this message
 }
 
 export interface SavedConversation {

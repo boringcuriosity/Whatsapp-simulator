@@ -260,7 +260,7 @@ const MessageText = styled.div`
 
 const ImageCaption = styled(MessageText)`
   padding: 8px 4px 4px 4px;
-  color: var(--text-secondary);
+  color: var(--text-primary); /* Changed from var(--text-secondary) to primary for darker color */
 `
 
 const MessageMeta = styled.div`
@@ -412,12 +412,12 @@ const UrlIconWrapper = styled.span`
   }
 `
 
-const BusinessMessageContainer = styled.div`
+const BusinessMessageContainer = styled.div<{ sender?: 'me' | 'them' }>`
   display: flex;
   flex-direction: column;
   width: 100%;
   max-width: 70%;
-  align-self: flex-start;
+  align-self: ${props => props.sender === 'me' ? 'flex-end' : 'flex-start'};
   margin-bottom: 8px;
 
   @media (max-width: 768px) {
@@ -541,7 +541,7 @@ const PhonePreview = ({ contact, messages }: PhonePreviewProps) => {
       if (currentBusinessGroup.length > 0 && (message.sender !== businessGroupSender || !message.isBusinessMessage || message.type !== 'button')) {
         // Render the business group
         result.push(
-          <BusinessMessageContainer key={`business-group-${currentBusinessGroup[0].id}`}>
+          <BusinessMessageContainer key={`business-group-${currentBusinessGroup[0].id}`} sender={businessGroupSender}>
             {currentBusinessGroup.map((buttonMsg) => (
               <BusinessButton 
                 key={buttonMsg.id}
@@ -575,7 +575,7 @@ const PhonePreview = ({ contact, messages }: PhonePreviewProps) => {
       } else if (message.type === 'button') {
         // This is a button but not a business message, render it as a standalone button
         result.push(
-          <BusinessMessageContainer key={`button-${message.id}`}>
+          <BusinessMessageContainer key={`button-${message.id}`} sender={message.sender}>
             <BusinessButton 
               key={message.id}
               onClick={() => {
@@ -604,7 +604,9 @@ const PhonePreview = ({ contact, messages }: PhonePreviewProps) => {
             {message.type === 'image' ? (
               <>
                 <img src={message.imageUrl} alt={message.caption || 'Image message'} />
-                {message.caption && <ImageCaption>{message.caption}</ImageCaption>}
+                {message.caption && (
+                  <ImageCaption>{message.caption}</ImageCaption>
+                )}
               </>
             ) : (
               <MessageText>
@@ -663,7 +665,7 @@ const PhonePreview = ({ contact, messages }: PhonePreviewProps) => {
     // Don't forget to render any remaining business group
     if (currentBusinessGroup.length > 0) {
       result.push(
-        <BusinessMessageContainer key={`business-group-${currentBusinessGroup[0].id}`}>
+        <BusinessMessageContainer key={`business-group-${currentBusinessGroup[0].id}`} sender={businessGroupSender}>
           {currentBusinessGroup.map((buttonMsg) => (
             <BusinessButton 
               key={buttonMsg.id}
