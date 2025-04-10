@@ -3,7 +3,7 @@ import styled from 'styled-components'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import PhonePreview from './components/PhonePreview'
 import ControlPanel from './components/ControlPanel'
-import { Message, Contact, ConversationStep } from './types'
+import { Message, Contact, ConversationStep, MessageType } from './types'
 import SaveConversationModal from './components/SaveConversationModal';
 import { conversationStorage, SavedConversation } from './services/conversationStorage';
 
@@ -57,40 +57,29 @@ const ControlSection = styled.div<{ isCollapsed: boolean }>`
   }
 `
 
-const ButtonGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`
-
-const ToggleButton = styled.button<{ isCollapsed: boolean }>`
-  position: ${props => props.isCollapsed ? 'static' : 'absolute'};
-  top: 20px;
-  right: 20px;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--whatsapp-teal);
+const CollapsedSidebarButton = styled.button`
+  background: transparent;
   border: none;
-  color: white;
+  color: var(--text-secondary);
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  z-index: 10;
-  padding: 0;
-  
-  img {
-    width: 20px;
-    height: 20px;
-    transform: rotate(${props => props.isCollapsed ? '0deg' : '180deg'});
-    transition: transform 0.3s ease;
-  }
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  margin: 10px auto;
+  transition: all 0.2s ease;
   
   &:hover {
-    transform: scale(1.1);
-    background: var(--whatsapp-green);
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--whatsapp-teal);
+  }
+  
+  img {
+    width: 18px;
+    height: 18px;
+    transform: rotate(180deg);
   }
 `
 
@@ -183,6 +172,7 @@ function App() {
     status: 'online',
     lastSeen: new Date()
   });
+
   const [isControlPanelCollapsed, setIsControlPanelCollapsed] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   
@@ -221,42 +211,59 @@ function App() {
 
   // Load saved conversations on mount
   useEffect(() => {
-    setSavedConversations(conversationStorage.getAll());
+    try {
+      const saved = conversationStorage.getAll();
+      setSavedConversations(saved);
+    } catch (error) {
+      console.error("Error loading saved conversations:", error);
+    }
   }, []);
   
   const handleSaveConversation = (name: string, description: string) => {
-    const newConversation = conversationStorage.save({
-      name,
-      description,
-      steps: steps,
-      contact: {
-        name: contact.name,
-        avatar: contact.avatar
-      }
-    });
-    setSavedConversations(prev => [...prev, newConversation]);
+    try {
+      const newConversation = conversationStorage.save({
+        name,
+        description,
+        steps: steps,
+        contact: {
+          name: contact.name,
+          avatar: contact.avatar
+        }
+      });
+      setSavedConversations(prev => [...prev, newConversation]);
+    } catch (error) {
+      console.error("Error saving conversation:", error);
+    }
   };
 
   const handleLoadSavedConversation = (conversation: SavedConversation) => {
-    setSteps(conversation.steps);
-    setShowJsonPreview(false);
-    setConversationFlow(JSON.stringify(conversation.steps, null, 2));
-    // Update contact info when loading saved conversation
-    updateContact({
-      name: conversation.contact.name,
-      avatar: conversation.contact.avatar
-    });
-    // Clear any existing conversation state
-    setMessages([]);
-    setCurrentStepIndex(-1);
-    setConversationQueue([]);
-    setIsPlayingConversation(false);
+    try {
+      setSteps(conversation.steps);
+      setShowJsonPreview(false);
+      setConversationFlow(JSON.stringify(conversation.steps, null, 2));
+      // Update contact info when loading saved conversation
+      updateContact({
+        name: conversation.contact.name,
+        avatar: conversation.contact.avatar
+      });
+      // Clear any existing conversation state
+      setMessages([]);
+      setCurrentStepIndex(-1);
+      setConversationQueue([]);
+      setIsPlayingConversation(false);
+    } catch (error) {
+      console.error("Error loading conversation:", error);
+    }
   };
 
   const handleDeleteSavedConversation = (id: string) => {
-    const deleted = conversationStorage.delete(id);
-    if (deleted) {
-      setSavedConversations(prev => prev.filter(conv => conv.id !== id));
+    try {
+      const deleted = conversationStorage.delete(id);
+      if (deleted) {
+        setSavedConversations(prev => prev.filter(conv => conv.id !== id));
+      }
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
     }
   };
 
@@ -288,274 +295,88 @@ function App() {
   };
 
   const handleNextStep = () => {
-    // If we have steps, use them directly
-    if (steps.length > 0) {
-      // If no messages yet, start with first message
-      if (messages.length === 0) {
-        const firstMessage = steps[0];
-        addMessageImmediately(firstMessage);
-        setCurrentStepIndex(0);
-        return;
+    try {
+      // If we have steps, use them directly
+      if (steps.length > 0) {
+        // If no messages yet, start with first message
+        if (messages.length === 0) {
+          const firstMessage = steps[0];
+          addMessageImmediately(firstMessage);
+          setCurrentStepIndex(0);
+          return;
+        }
+        
+        // If we haven't started yet
+        if (currentStepIndex === -1) {
+          const firstMessage = steps[0];
+          addMessageImmediately(firstMessage);
+          setCurrentStepIndex(0);
+          return;
+        }
+        
+        // If we're not at the end
+        if (currentStepIndex < steps.length - 1) {
+          const nextStep = steps[currentStepIndex + 1];
+          addMessageImmediately(nextStep);
+          setCurrentStepIndex(prev => prev + 1);
+        }
       }
-
-      // If we haven't started yet
-      if (currentStepIndex === -1) {
-        const firstMessage = steps[0];
-        addMessageImmediately(firstMessage);
-        setCurrentStepIndex(0);
-        return;
-      }
-
-      // If we're not at the end
-      if (currentStepIndex < steps.length - 1) {
-        const nextStep = steps[currentStepIndex + 1];
-        addMessageImmediately(nextStep);
-        setCurrentStepIndex(prev => prev + 1);
-      }
+    } catch (error) {
+      console.error("Error adding next step:", error);
     }
   };
 
   // Helper function to add message immediately without delays
   const addMessageImmediately = (step: ConversationStep) => {
-    // Reset any previous typing indicators
-    if (contact.status === 'typing') {
-      setContact(prev => ({ ...prev, status: 'online' }));
-    }
-
-    // Show typing indicator only briefly for visual feedback
-    if (step.sender === 'them' && step.type !== 'button') {
-      setContact(prev => ({ ...prev, status: 'typing' }));
-      // Reset status after a very short delay
-      setTimeout(() => {
-        setContact(prev => ({ ...prev, status: 'online' }));
-      }, 200);
-    }
-
-    // Format and add the message immediately
-    let formattedText = step.text;
-    if (step.highlightedText) {
-      formattedText = formattedText.replace(
-        step.highlightedText,
-        `*${step.highlightedText}*`
-      );
-    }
-
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text: formattedText,
-      sender: step.sender,
-      timestamp: new Date(),
-      status: 'sent',
-      type: step.type || 'text',
-      isBusinessMessage: step.isBusinessMessage,
-      buttonText: step.buttonText,
-      link: step.link,
-      openLinkInWebView: step.openLinkInWebView,  // Preserve the openLinkInWebView property
-      imageUrl: step.imageUrl,
-      caption: step.caption
-    };
-
-    setMessages(prev => [...prev, newMessage]);
-
-    // If this message has buttons, add them as separate messages
-    if (step.buttons && step.buttons.length > 0) {
-      step.buttons.forEach(button => {
-        const buttonMessage: Message = {
-          id: `${Date.now().toString()}-btn-${button.text}`,
-          text: button.text,
-          buttonText: button.text,
-          sender: step.sender,
-          timestamp: new Date(),
-          status: 'sent',
-          type: 'button',
-          isBusinessMessage: true,
-          link: button.url,
-          openLinkInWebView: button.openInWebView
-        };
-
-        setMessages(prev => [...prev, buttonMessage]);
-      });
-    }
-  };
-
-  const updateContact = (updatedContact: Partial<Contact>) => {
-    setContact(prev => ({ ...prev, ...updatedContact }))
-  }
-
-  const addMessage = (message: Omit<Message, 'id' | 'timestamp' | 'status'>) => {
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      timestamp: new Date(),
-      status: 'sent',
-      type: message.type || 'text',
-      openLinkInWebView: message.openLinkInWebView,  // Preserve the openLinkInWebView property
-      ...message
-    }
-    
-    setMessages(prev => [...prev, newMessage])
-  }
-
-  const updateMessage = (id: string, updates: Partial<Message>) => {
-    setMessages(prev => 
-      prev.map(msg => msg.id === id ? { ...msg, ...updates } : msg)
-    )
-  }
-
-  const deleteMessage = (id: string) => {
-    setMessages(prev => prev.filter(msg => msg.id !== id))
-  }
-
-  const clearAllMessages = () => {
-    setMessages([])
-  }
-
-  // Modified startConversation to handle buttons correctly
-  const startConversation = (steps: ConversationStep[]) => {
-    // Process steps to extract buttons as separate steps
-    const processedSteps: ConversationStep[] = [];
-    
-    steps.forEach(step => {
-      // Add the main message step (without buttons property)
-      const { buttons, ...mainStep } = step;
-      
-      // Ensure type is properly set based on content
-      const processedStep = {
-        ...mainStep,
-        type: mainStep.imageUrl ? 'image' : mainStep.type || 'text'
-      };
-      
-      processedSteps.push(processedStep);
-      
-      // Add button steps if present
-      if (buttons && buttons.length > 0) {
-        buttons.forEach(button => {
-          processedSteps.push({
-            text: button.text,
-            sender: step.sender,
-            type: 'button',
-            buttonText: button.text,
-            isBusinessMessage: true,
-            delay: 0,
-            link: button.url,
-            openLinkInWebView: button.openInWebView
-          });
-        });
-      }
-    });
-    
-    setSavedConversation(processedSteps);
-    setIsPlayingConversation(true);
-    setConversationQueue(processedSteps);
-    setCurrentStepIndex(-1);
-    setMessages([]); // Clear messages when starting new conversation
-  }
-
-  const handlePlayConversation = () => {
-    // If currently playing, pause the conversation
-    if (isPlayingConversation) {
-      setIsPlayingConversation(false);
-      return;
-    }
-
-    // If there's an existing queue but paused, resume it
-    if (conversationQueue.length > 0) {
-      setIsPlayingConversation(true);
-      return;
-    }
-
-    // Clear existing messages when starting a new conversation from the sidebar
-    // Only do this when explicitly starting from scratch, not when resuming
-    setMessages([]);
-
-    // If there's a saved conversation, start it from the beginning
-    if (savedConversation.length > 0) {
-      // Create a fresh copy of the saved conversation
-      setConversationQueue([...savedConversation]);
-      setIsPlayingConversation(true);
-      return;
-    }
-
-    // Only use default conversation if no saved conversation exists
-    const defaultConversation: ConversationStep[] = [
-      {
-        text: "Is +91 984XXXXX34 linked to your business bank accounts?",
-        sender: "them",
-        isBusinessMessage: true,
-        delay: 1000
-      },
-      {
-        text: "Yes",
-        sender: "them",
-        type: "button",
-        isBusinessMessage: true,
-        delay: 0
-      },
-      {
-        text: "No",
-        sender: "them",
-        type: "button",
-        isBusinessMessage: true,
-        delay: 0
-      }
-    ];
-    
-    setSavedConversation(defaultConversation);
-    // Create a fresh copy of the default conversation
-    setConversationQueue([...defaultConversation]);
-    setIsPlayingConversation(true);
-  };
-
-  // Update useEffect to work better with buttons
-  useEffect(() => {
-    if (!isPlayingConversation || conversationQueue.length === 0) return;
-    const nextStep = conversationQueue[0];
-    const delay = nextStep.delay ?? 1000;
-    
-    if (nextStep.sender === 'them' && nextStep.type !== 'button') {
-      setContact(prev => ({ ...prev, status: 'typing' }));
-    }
-    
-    const timer = setTimeout(() => {
-      if (nextStep.sender === 'them') {
+    try {
+      // Reset any previous typing indicators
+      if (contact.status === 'typing') {
         setContact(prev => ({ ...prev, status: 'online' }));
       }
       
-      let formattedText = nextStep.text;
-      if (nextStep.highlightedText) {
+      // Show typing indicator only briefly for visual feedback
+      if (step.sender === 'them' && step.type !== 'button') {
+        setContact(prev => ({ ...prev, status: 'typing' }));
+        // Reset status after a very short delay
+        setTimeout(() => {
+          setContact(prev => ({ ...prev, status: 'online' }));
+        }, 200);
+      }
+      
+      // Format and add the message immediately
+      let formattedText = step.text || '';
+      if (step.highlightedText) {
         formattedText = formattedText.replace(
-          nextStep.highlightedText,
-          `*${nextStep.highlightedText}*`
+          step.highlightedText,
+          `*${step.highlightedText}*`
         );
       }
       
       const newMessage: Message = {
         id: Date.now().toString(),
         text: formattedText,
-        sender: nextStep.sender,
+        sender: step.sender,
         timestamp: new Date(),
         status: 'sent',
-        type: nextStep.type || 'text',
-        isBusinessMessage: nextStep.isBusinessMessage,
-        buttonText: nextStep.buttonText,
-        link: nextStep.link,
-        openLinkInWebView: nextStep.openLinkInWebView,
-        imageUrl: nextStep.imageUrl,
-        caption: nextStep.caption
+        type: (step.type as MessageType) || 'text',
+        isBusinessMessage: step.isBusinessMessage,
+        buttonText: step.buttonText,
+        link: step.link,
+        openLinkInWebView: step.openLinkInWebView,
+        imageUrl: step.imageUrl,
+        caption: step.caption
       };
       
       setMessages(prev => [...prev, newMessage]);
-      setCurrentStepIndex(prev => prev + 1);
-      setConversationQueue(prev => prev.slice(1));
       
-      // If this was a message with buttons in the original steps, add them immediately
-      // This is only needed for the manual next button, auto-play will handle them correctly
-      if (!isPlayingConversation && nextStep.buttons && nextStep.buttons.length > 0) {
-        nextStep.buttons.forEach(button => {
+      // If this message has buttons, add them as separate messages
+      if (step.buttons && step.buttons.length > 0) {
+        step.buttons.forEach(button => {
           const buttonMessage: Message = {
             id: `${Date.now().toString()}-btn-${button.text}`,
-            text: button.text,
-            buttonText: button.text,
-            sender: nextStep.sender,
+            text: button.text || '',
+            buttonText: button.text || '',
+            sender: step.sender,
             timestamp: new Date(),
             status: 'sent',
             type: 'button',
@@ -567,9 +388,229 @@ function App() {
           setMessages(prev => [...prev, buttonMessage]);
         });
       }
-    }, delay);
+    } catch (error) {
+      console.error("Error adding message immediately:", error);
+    }
+  };
+
+  const updateContact = (updatedContact: Partial<Contact>) => {
+    setContact(prev => ({ ...prev, ...updatedContact }));
+  };
+
+  const addMessage = (message: Omit<Message, 'id' | 'timestamp' | 'status'>) => {
+    try {
+      const newMessage: Message = {
+        id: Date.now().toString(),
+        timestamp: new Date(),
+        status: 'sent',
+        type: message.type || 'text',
+        openLinkInWebView: message.openLinkInWebView,
+        ...message
+      };
+      
+      setMessages(prev => [...prev, newMessage]);
+    } catch (error) {
+      console.error("Error adding message:", error);
+    }
+  };
+
+  const updateMessage = (id: string, updates: Partial<Message>) => {
+    setMessages(prev => 
+      prev.map(msg => msg.id === id ? { ...msg, ...updates } : msg)
+    );
+  };
+
+  const deleteMessage = (id: string) => {
+    setMessages(prev => prev.filter(msg => msg.id !== id));
+  };
+
+  const clearAllMessages = () => {
+    setMessages([]);
+  };
+
+  // Modified startConversation to handle buttons correctly
+  const startConversation = (steps: ConversationStep[]) => {
+    try {
+      // Process steps to extract buttons as separate steps
+      const processedSteps: ConversationStep[] = [];
+      
+      steps.forEach(step => {
+        if (!step) return; // Skip undefined steps
+        
+        // Add the main message step (without buttons property)
+        const { buttons, ...mainStep } = step;
+        
+        // Ensure type is properly set based on content
+        const processedStep: ConversationStep = {
+          ...mainStep,
+          type: mainStep.imageUrl ? 'image' : (mainStep.type as MessageType || 'text')
+        };
+        
+        processedSteps.push(processedStep);
+        
+        // Add button steps if present
+        if (buttons && buttons.length > 0) {
+          buttons.forEach(button => {
+            if (button && typeof button === 'object') {
+              const buttonStep: ConversationStep = {
+                text: button.text || "",
+                sender: step.sender,
+                type: 'button',
+                buttonText: button.text || "",
+                isBusinessMessage: true,
+                delay: 0,
+                link: button.url,
+                openLinkInWebView: button.openInWebView
+              };
+              processedSteps.push(buttonStep);
+            }
+          });
+        }
+      });
+      
+      setSavedConversation(processedSteps);
+      setIsPlayingConversation(true);
+      setConversationQueue(processedSteps);
+      setCurrentStepIndex(-1);
+      setMessages([]); // Clear messages when starting new conversation
+    } catch (error) {
+      console.error("Error starting conversation:", error);
+    }
+  };
+
+  const handlePlayConversation = () => {
+    try {
+      // If currently playing, pause the conversation
+      if (isPlayingConversation) {
+        setIsPlayingConversation(false);
+        return;
+      }
+      
+      // If there's an existing queue but paused, resume it
+      if (conversationQueue.length > 0) {
+        setIsPlayingConversation(true);
+        return;
+      }
+      
+      // Clear existing messages when starting a new conversation from the sidebar
+      // Only do this when explicitly starting from scratch, not when resuming
+      setMessages([]);
+      
+      // If there's a saved conversation, start it from the beginning
+      if (savedConversation.length > 0) {
+        // Create a fresh copy of the saved conversation
+        setConversationQueue([...savedConversation]);
+        setIsPlayingConversation(true);
+        return;
+      }
+      
+      // Only use default conversation if no saved conversation exists
+      const defaultConversation: ConversationStep[] = [
+        {
+          text: "Is +91 984XXXXX34 linked to your business bank accounts?",
+          sender: "them",
+          isBusinessMessage: true,
+          delay: 1000
+        },
+        {
+          text: "Yes",
+          sender: "them",
+          type: "button",
+          isBusinessMessage: true,
+          delay: 0
+        },
+        {
+          text: "No",
+          sender: "them",
+          type: "button",
+          isBusinessMessage: true,
+          delay: 0
+        }
+      ];
+      
+      setSavedConversation(defaultConversation);
+      // Create a fresh copy of the default conversation
+      setConversationQueue([...defaultConversation]);
+      setIsPlayingConversation(true);
+    } catch (error) {
+      console.error("Error handling play conversation:", error);
+    }
+  };
+
+  // Update useEffect to work better with buttons
+  useEffect(() => {
+    if (!isPlayingConversation || conversationQueue.length === 0) return;
     
-    return () => clearTimeout(timer);
+    try {
+      const nextStep = conversationQueue[0];
+      if (!nextStep) return; // Skip if step is undefined
+      
+      const delay = nextStep.delay ?? 1000;
+      
+      if (nextStep.sender === 'them' && nextStep.type !== 'button') {
+        setContact(prev => ({ ...prev, status: 'typing' }));
+      }
+      
+      const timer = setTimeout(() => {
+        if (nextStep.sender === 'them') {
+          setContact(prev => ({ ...prev, status: 'online' }));
+        }
+        
+        let formattedText = nextStep.text || '';
+        if (nextStep.highlightedText) {
+          formattedText = formattedText.replace(
+            nextStep.highlightedText,
+            `*${nextStep.highlightedText}*`
+          );
+        }
+        
+        const newMessage: Message = {
+          id: Date.now().toString(),
+          text: formattedText,
+          sender: nextStep.sender,
+          timestamp: new Date(),
+          status: 'sent',
+          type: (nextStep.type as MessageType) || 'text',
+          isBusinessMessage: nextStep.isBusinessMessage,
+          buttonText: nextStep.buttonText,
+          link: nextStep.link,
+          openLinkInWebView: nextStep.openLinkInWebView,
+          imageUrl: nextStep.imageUrl,
+          caption: nextStep.caption
+        };
+        
+        setMessages(prev => [...prev, newMessage]);
+        setCurrentStepIndex(prev => prev + 1);
+        setConversationQueue(prev => prev.slice(1));
+        
+        // If this was a message with buttons in the original steps, add them immediately
+        // This is only needed for the manual next button, auto-play will handle them correctly
+        if (!isPlayingConversation && nextStep.buttons && nextStep.buttons.length > 0) {
+          nextStep.buttons.forEach(button => {
+            if (button && typeof button === 'object') {
+              const buttonMessage: Message = {
+                id: `${Date.now().toString()}-btn-${button.text || ''}`,
+                text: button.text || '',
+                buttonText: button.text || '',
+                sender: nextStep.sender,
+                timestamp: new Date(),
+                status: 'sent',
+                type: 'button',
+                isBusinessMessage: true,
+                link: button.url,
+                openLinkInWebView: button.openInWebView
+              };
+              
+              setMessages(prev => [...prev, buttonMessage]);
+            }
+          });
+        }
+      }, delay);
+      
+      return () => clearTimeout(timer);
+    } catch (error) {
+      console.error("Error in conversation effect:", error);
+    }
   }, [isPlayingConversation, conversationQueue]);
 
   return (
@@ -584,60 +625,49 @@ function App() {
       
       <ControlSection isCollapsed={isControlPanelCollapsed}>
         {isControlPanelCollapsed ? (
-          <ButtonGroup>
-            <ToggleButton 
-              isCollapsed={isControlPanelCollapsed}
-              onClick={() => setIsControlPanelCollapsed(false)}
-              title="Show message controls"
-            >
-              <img src="/settings-icon.svg" alt="Toggle controls" />
-            </ToggleButton>
-          </ButtonGroup>
+          <CollapsedSidebarButton 
+            onClick={() => setIsControlPanelCollapsed(false)}
+            title="Show message controls"
+          >
+            <img src="/sidebar_icon.svg" alt="Show controls" />
+          </CollapsedSidebarButton>
         ) : (
-          <>
-            <ToggleButton 
-              isCollapsed={isControlPanelCollapsed}
-              onClick={() => setIsControlPanelCollapsed(true)}
-              title="Hide message controls"
-            >
-              <img src="/settings-icon.svg" alt="Toggle controls" />
-            </ToggleButton>
-            
-            <ControlPanel
-              contact={contact}
-              messages={messages}
-              onUpdateContact={updateContact}
-              onAddMessage={addMessage}
-              onUpdateMessage={updateMessage}
-              onDeleteMessage={deleteMessage}
-              onClearMessages={clearAllMessages}
-              onStartConversation={startConversation}
-              contactSettingsOpen={contactSettingsOpen}
-              setContactSettingsOpen={setContactSettingsOpen}
-              messageType={messageType}
-              setMessageType={setMessageType}
-              newTextMessage={newTextMessage}
-              setNewTextMessage={setNewTextMessage}
-              businessMessage={businessMessage}
-              setBusinessMessage={setBusinessMessage}
-              conversationFlow={conversationFlow}
-              setConversationFlow={setConversationFlow}
-              steps={steps}
-              setSteps={setSteps}
-              showJsonPreview={showJsonPreview}
-              setShowJsonPreview={setShowJsonPreview}
-              showPreview={showPreview}
-              setShowPreview={setShowPreview}
-              previewMessages={previewMessages}
-              setPreviewMessages={setPreviewMessages}
-              conversationError={conversationError}
-              setConversationError={setConversationError}
-              savedConversations={savedConversations}
-              onLoadSavedConversation={handleLoadSavedConversation}
-              onDeleteSavedConversation={handleDeleteSavedConversation}
-              onSaveCurrentConversation={() => setIsSaveModalOpen(true)}
-            />
-          </>
+          <ControlPanel
+            contact={contact}
+            messages={messages}
+            onUpdateContact={updateContact}
+            onAddMessage={addMessage}
+            onUpdateMessage={updateMessage}
+            onDeleteMessage={deleteMessage}
+            onClearMessages={clearAllMessages}
+            onStartConversation={startConversation}
+            contactSettingsOpen={contactSettingsOpen}
+            setContactSettingsOpen={setContactSettingsOpen}
+            messageType={messageType}
+            setMessageType={setMessageType}
+            newTextMessage={newTextMessage}
+            setNewTextMessage={setNewTextMessage}
+            businessMessage={businessMessage}
+            setBusinessMessage={setBusinessMessage}
+            conversationFlow={conversationFlow}
+            setConversationFlow={setConversationFlow}
+            steps={steps}
+            setSteps={setSteps}
+            showJsonPreview={showJsonPreview}
+            setShowJsonPreview={setShowJsonPreview}
+            showPreview={showPreview}
+            setShowPreview={setShowPreview}
+            previewMessages={previewMessages}
+            setPreviewMessages={setPreviewMessages}
+            conversationError={conversationError}
+            setConversationError={setConversationError}
+            savedConversations={savedConversations}
+            onLoadSavedConversation={handleLoadSavedConversation}
+            onDeleteSavedConversation={handleDeleteSavedConversation}
+            onSaveCurrentConversation={() => setIsSaveModalOpen(true)}
+            isControlPanelCollapsed={isControlPanelCollapsed}
+            setIsControlPanelCollapsed={setIsControlPanelCollapsed}
+          />
         )}
       </ControlSection>
       
@@ -671,7 +701,7 @@ function App() {
           <ArrowRight />
         </ArrowButton>
       </ManualControls>
-
+      
       {/* Save conversation modal */}
       <SaveConversationModal
         isOpen={isSaveModalOpen}

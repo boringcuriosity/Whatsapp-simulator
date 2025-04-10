@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
-import { Copy, Trash2, ArrowUp, ArrowDown, HelpCircle, PlusCircle, Image, MessageSquare, Clock, UserCircle } from 'lucide-react'
-import { Message, Contact, MessageStatus, ContactStatus, ConversationStep, MessageButton } from '../types'
+import { Copy, Trash2, ArrowUp, ArrowDown, HelpCircle, PlusCircle, Image, MessageSquare, Clock, UserCircle, Edit3, FileJson, Bookmark, Info, MousePointer2, LayoutTemplate, ChevronDown, ChevronUp, Settings, X } from 'lucide-react'
+import { Message, Contact, MessageStatus, ContactStatus, ConversationStep, MessageButton, MessageType } from '../types'
 import PhonePreview from './PhonePreview'
 import SavedConversations from './SavedConversations'
 import { SavedConversation } from '../services/conversationStorage'
@@ -11,11 +11,11 @@ const Container = styled.div`
   flex-direction: column;
   gap: 24px;
   height: 100%;
-  position: relative; // Added position relative to establish a positioning context
+  position: relative;
 
   @media (max-width: 768px) {
     gap: 16px;
-    padding-bottom: 60px; // Add space for mobile browser bars
+    padding-bottom: 60px;
   }
 `
 
@@ -30,7 +30,7 @@ const Section = styled.div`
 `
 
 const SectionTitle = styled.h2`
-display: flex;
+  display: flex;
   align-items: center;
   font-size: 18px;
   font-weight: 600;
@@ -38,6 +38,7 @@ display: flex;
   margin-bottom: 8px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border-color);
+  justify-content: space-between;
 
   @media (max-width: 768px) {
     font-size: 16px;
@@ -175,18 +176,27 @@ const MessageActions = styled.div`
 const Collapsible = styled.div`
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  position: relative;
-  margin-bottom: 16px;
-  max-width: 480px;
-  min-width: 380px;
-  align-self: flex-start;
-
+  position: absolute;
+  top: 42px;
+  left: 0;
+  width: 300px;
+  z-index: 50;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+  
+  &.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+  
   @media (max-width: 768px) {
-    max-width: 95%;
-    min-width: unset;
-    width: 95%;
-    margin-left: auto;
-    margin-right: auto;
+    width: 90%;
+    left: 5%;
   }
 `
 
@@ -198,7 +208,7 @@ const CollapsibleHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   font-weight: 500;
-  border-radius: 8px;
+  border-radius: 8px 8px 0 0;
   z-index: 5;
   position: relative;
 `
@@ -215,6 +225,32 @@ const CollapsibleContent = styled.div<{ isOpen: boolean }>`
   z-index: 4;
   position: ${props => props.isOpen ? 'absolute' : 'static'};
   width: 100%;
+`
+
+const ContactSettingsButton = styled.button`
+  background: #f0f2f5;
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  margin-right: 12px;
+  
+  &:hover {
+    background: #e4e6eb;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  svg {
+    width: 18px;
+    height: 18px;
+  }
 `
 
 const MessageInputContainer = styled.div`
@@ -386,7 +422,7 @@ const StepForm = styled(ConversationStepForm)`
   background-color: white;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  scroll-margin: 20px; // Add scroll margin for smoother scrolling
+  scroll-margin: 20px;
   
   &:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -411,16 +447,159 @@ const StepIndexBadge = styled.div`
 `
 
 const QuickActionsBar = styled.div`
-  display: flex;
-  gap: 8px;
   margin-bottom: 24px;
-  flex-wrap: wrap;
-  padding: 16px;
-  background-color: #f9f9f9;
   border-radius: 8px;
   border: 1px solid var(--border-color);
+  background-color: #f9f9f9;
+  overflow: hidden;
+`;
+
+const QuickActionsHeader = styled.div`
+  display: flex;
+  justify-content: flex-start;
   align-items: center;
-`
+  padding: 12px 16px;
+  background-color: rgba(18, 140, 126, 0.08);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color);
+  
+  h3 {
+    font-size: 15px;
+    font-weight: 500;
+    margin: 0;
+    color: var(--whatsapp-teal);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: auto;
+  }
+`;
+
+const QuickActionsContent = styled.div<{ isOpen: boolean }>`
+  padding: ${props => props.isOpen ? '16px' : '0'};
+  height: ${props => props.isOpen ? 'auto' : '0'};
+  opacity: ${props => props.isOpen ? '1' : '0'};
+  overflow: hidden;
+  transition: all 0.3s ease;
+`;
+
+const TemplateGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const TemplateCard = styled.div`
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    border-color: var(--whatsapp-teal);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+`;
+
+const TemplateHeader = styled.div`
+  padding: 12px;
+  background-color: rgba(18, 140, 126, 0.06);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  svg {
+    color: var(--whatsapp-teal);
+  }
+  
+  h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+  }
+`;
+
+const TemplatePreview = styled.div`
+  padding: 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  
+  p {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    color: #666;
+  }
+`;
+
+const PreviewBubble = styled.div<{ isUser?: boolean }>`
+  background-color: ${props => props.isUser ? 'rgba(37, 211, 102, 0.1)' : '#fff'};
+  border: 1px solid ${props => props.isUser ? 'rgba(37, 211, 102, 0.2)' : '#e0e0e0'};
+  padding: 8px 12px;
+  border-radius: 12px;
+  border-top-${props => props.isUser ? 'right' : 'left'}-radius: 3px;
+  font-size: 13px;
+  margin-bottom: 4px;
+  max-width: 80%;
+  align-self: ${props => props.isUser ? 'flex-end' : 'flex-start'};
+`;
+
+const TemplatePreviewContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  background-color: rgba(0,0,0,0.02);
+  border-radius: 8px;
+  margin-bottom: 10px;
+`;
+
+const ButtonPreview = styled.div`
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--whatsapp-teal);
+  font-weight: 500;
+`;
+
+const AddTemplateButton = styled.button`
+  padding: 8px 12px;
+  background-color: var(--whatsapp-teal);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+  
+  &:hover {
+    background-color: #0e8c7e;
+    transform: translateY(-2px);
+  }
+  
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+`;
 
 const TemplateButton = styled(Button)`
   display: flex;
@@ -435,25 +614,52 @@ const TemplateButton = styled(Button)`
 `
 
 const EditorTabs = styled.div`
-  display: flex;
+  display: inline-flex;
+  position: relative;
   gap: 0;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--border-color);
+  margin-left: auto;
+  border-radius: 20px;
+  background: #f0f2f5;
+  padding: 3px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  max-width: fit-content;
+  z-index: 5;
 `
 
 const EditorTab = styled.button<{ active: boolean }>`
-  padding: 12px 24px;
-  font-size: 14px;
+  padding: 6px 10px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  background-color: ${props => props.active ? 'white' : '#f5f5f5'};
+  background-color: ${props => props.active ? 'white' : 'transparent'};
   color: ${props => props.active ? 'var(--whatsapp-teal)' : 'var(--text-secondary)'};
   border: none;
-  border-bottom: 3px solid ${props => props.active ? 'var(--whatsapp-teal)' : 'transparent'};
-  flex: 1;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: ${props => props.active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};
+  transition: all 0.2s ease;
   
   &:hover {
-    background-color: ${props => props.active ? 'white' : '#efefef'};
+    background-color: ${props => props.active ? 'white' : 'rgba(255,255,255,0.5)'};
+  }
+  
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 6px;
+    
+    span {
+      display: none;
+    }
+    
+    svg {
+      margin: 0;
+    }
   }
 `
 
@@ -747,37 +953,200 @@ const RadioText = styled.span<{ isSelected: boolean }>`
   font-size: 14px;
 `
 
+const ToggleButton = styled.button`
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--whatsapp-teal);
+  }
+  
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+`
+
+const MessageSenderToggle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 4px;
+  background: #f5f5f5;
+  border-radius: 20px;
+  width: fit-content;
+  
+  svg {
+    margin: 0 4px;
+  }
+`
+
+const SenderOption = styled.button<{ active: boolean }>`
+  padding: 6px 12px;
+  border-radius: 16px;
+  background: ${props => props.active ? 'white' : 'transparent'};
+  color: ${props => props.active ? 'var(--whatsapp-teal)' : 'var(--text-primary)'};
+  border: none;
+  font-size: 13px;
+  font-weight: ${props => props.active ? '500' : 'normal'};
+  cursor: pointer;
+  box-shadow: ${props => props.active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};
+  
+  &:hover {
+    background: ${props => props.active ? 'white' : 'rgba(255,255,255,0.5)'};
+  }
+`
+
+const AttachmentOptions = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+`
+
+const AttachmentButton = styled.button<{ active?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid ${props => props.active ? 'var(--whatsapp-teal)' : 'var(--border-color)'};
+  background: ${props => props.active ? 'rgba(37, 211, 102, 0.1)' : '#f5f5f5'};
+  color: ${props => props.active ? 'var(--whatsapp-teal)' : 'var(--text-primary)'};
+  font-size: 13px;
+  cursor: pointer;
+  
+  &:hover {
+    background: ${props => props.active ? 'rgba(37, 211, 102, 0.15)' : '#ebebeb'};
+    transform: translateY(-1px);
+  }
+`
+
+const ImageSection = styled.div`
+  margin-top: 16px;
+  padding: 16px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #eee;
+`
+
+const ButtonSection = styled.div`
+  margin-top: 16px;
+  padding: 16px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #eee;
+`
+
+const ButtonList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+`
+
+const ButtonItem = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #eee;
+`
+
+const ButtonCount = styled.div`
+  width: 24px;
+  height: 24px;
+  background: var(--whatsapp-teal);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  flex-shrink: 0;
+`
+
+const DelaySelector = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 8px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  font-size: 13px;
+`
+
+const DelayOption = styled.button<{ active: boolean }>`
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: ${props => props.active ? 'white' : 'transparent'};
+  color: ${props => props.active ? 'var(--whatsapp-teal)' : 'var(--text-secondary)'};
+  border: 1px solid ${props => props.active ? 'var(--whatsapp-teal)' : 'transparent'};
+  font-size: 12px;
+  font-weight: ${props => props.active ? '500' : 'normal'};
+  cursor: pointer;
+  
+  &:hover {
+    background: ${props => props.active ? 'white' : 'rgba(255,255,255,0.5)'};
+  }
+`
+
 const STEP_TEMPLATES = [
   {
     name: 'Question with Yes/No',
+    description: 'Ask a question with two predefined options for quick response',
+    icon: <MessageSquare size={18} />,
     template: {
-      text: 'Do you want to proceed?',
+      text: 'Do you want to proceed with this option?',
       sender: 'them' as const,
       delay: 1000,
       isBusinessMessage: true,
-      type: 'text' as const,
+      type: 'text' as MessageType,
     },
     buttons: ['Yes', 'No']
   },
   {
     name: 'Information Message',
+    description: 'Send an informational message to share important details',
+    icon: <Info size={18} />,
     template: {
-      text: 'Here is some important information.',
+      text: 'Here is some important information you should know.',
       sender: 'them' as const,
       delay: 1500,
-      type: 'text' as const,
+      type: 'text' as MessageType,
     }
   },
   {
     name: 'Action Button',
+    description: 'Include a clickable button to direct users to take action',
+    icon: <MousePointer2 size={18} />,
     template: {
-      text: 'Click here',
+      text: 'Click the button below to continue',
       sender: 'them' as const,
-      type: 'button' as const,
+      delay: 1000,
       isBusinessMessage: true,
-      delay: 0,
-      buttonText: 'Click here'
-    }
+      type: 'text' as MessageType,
+    },
+    buttons: ['Click here']
   }
 ];
 
@@ -792,27 +1161,26 @@ interface ControlPanelProps {
   onDeleteMessage: (id: string) => void;
   onClearMessages: () => void;
   onStartConversation: (steps: ConversationStep[]) => void;
-  // New props for lifted state
   contactSettingsOpen: boolean;
   setContactSettingsOpen: (open: boolean) => void;
   messageType: 'text' | 'business' | 'conversation';
   setMessageType: (type: 'text' | 'business' | 'conversation') => void;
-  newTextMessage: { text: string; sender: 'me' | 'them' };
-  setNewTextMessage: (message: { text: string; sender: 'me' | 'them' }) => void;
+  newTextMessage: { text: string; sender: 'me' };
+  setNewTextMessage: React.Dispatch<React.SetStateAction<{ text: string; sender: 'me' }>>;
   businessMessage: {
     text: string;
     options: string[];
     phoneNumber: string;
     highlightedText: string;
-    sender: 'me' | 'them';
+    sender: 'them';
   };
-  setBusinessMessage: (message: {
+  setBusinessMessage: React.Dispatch<React.SetStateAction<{
     text: string;
     options: string[];
     phoneNumber: string;
     highlightedText: string;
-    sender: 'me' | 'them';
-  }) => void;
+    sender: 'them';
+  }>>;
   conversationFlow: string;
   setConversationFlow: (flow: string) => void;
   steps: ConversationStep[];
@@ -829,6 +1197,8 @@ interface ControlPanelProps {
   onLoadSavedConversation: (conversation: SavedConversation) => void;
   onDeleteSavedConversation: (id: string) => void;
   onSaveCurrentConversation: () => void;
+  isControlPanelCollapsed: boolean;
+  setIsControlPanelCollapsed: (collapsed: boolean) => void;
 }
 
 const ControlPanel = ({
@@ -840,7 +1210,6 @@ const ControlPanel = ({
   onDeleteMessage,
   onClearMessages,
   onStartConversation,
-  // New props
   contactSettingsOpen,
   setContactSettingsOpen,
   messageType,
@@ -864,14 +1233,36 @@ const ControlPanel = ({
   savedConversations,
   onLoadSavedConversation,
   onDeleteSavedConversation,
-  onSaveCurrentConversation
+  onSaveCurrentConversation,
+  isControlPanelCollapsed,
+  setIsControlPanelCollapsed
 }: ControlPanelProps) => {
   const stepRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [linkOpeningBehavior, setLinkOpeningBehavior] = useState<'webview' | 'newtab'>('webview');
   const [editorMode, setEditorMode] = useState<EditorMode>('visual');
-  const [showHelp, setShowHelp] = useState(false); // Changed from true to false
-  
-  // Force set the message type to conversation flow
+  const [showHelp, setShowHelp] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [contactSettingsVisible, setContactSettingsVisible] = useState(false);
+
+  const contactSettingsRef = useRef<HTMLDivElement>(null);
+  const contactButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (contactSettingsRef.current &&
+          !contactSettingsRef.current.contains(event.target as Node) && 
+          contactButtonRef.current && 
+          !contactButtonRef.current.contains(event.target as Node)) {
+        setContactSettingsVisible(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   useEffect(() => {
     if (messageType !== 'conversation') {
       setMessageType('conversation');
@@ -883,38 +1274,31 @@ const ControlPanel = ({
       i === index ? { 
         ...step, 
         ...updates,
-        // Ensure openLinkInWebView is properly set when updating a step with a link
         ...(updates.link && typeof updates.openLinkInWebView === 'undefined' ? 
           { openLinkInWebView: linkOpeningBehavior === 'webview' } : {})
       } : step
     ));
   };
 
-  // Function to add a button to the message
   const addButtonToMessage = (stepIndex: number, buttonText: string = '', url: string = '') => {
     const step = steps[stepIndex];
     if (!step) return;
     
-    // Initialize buttons array if it doesn't exist
     const buttons = step.buttons || [];
     
-    // Limit to 5 buttons
     if (buttons.length >= 5) {
       alert("Maximum 5 buttons allowed per message");
       return;
     }
     
-    // Add a new button
     const updatedButtons = [
       ...buttons,
       { text: buttonText, url, openInWebView: true }
     ];
     
-    // Update the step with new buttons
     updateStep(stepIndex, { buttons: updatedButtons });
   };
   
-  // Function to update a button's properties
   const updateMessageButton = (
     stepIndex: number, 
     buttonIndex: number, 
@@ -923,33 +1307,26 @@ const ControlPanel = ({
     const step = steps[stepIndex];
     if (!step || !step.buttons) return;
     
-    // Create a new array with the updated button
     const updatedButtons = step.buttons.map((btn, idx) => 
       idx === buttonIndex ? { ...btn, ...updates } : btn
     );
     
-    // Update the step with modified buttons
     updateStep(stepIndex, { buttons: updatedButtons });
   };
   
-  // Function to remove a button from a message
   const removeButtonFromMessage = (stepIndex: number, buttonIndex: number) => {
     const step = steps[stepIndex];
     if (!step || !step.buttons) return;
     
-    // Filter out the button to remove
     const updatedButtons = step.buttons.filter((_, idx) => idx !== buttonIndex);
     
-    // Update the step with filtered buttons
     updateStep(stepIndex, { buttons: updatedButtons.length > 0 ? updatedButtons : undefined });
   };
   
-  // Toggle image on message
   const toggleImageOnMessage = (stepIndex: number) => {
     const step = steps[stepIndex];
     if (!step) return;
     
-    // If image already exists, remove it
     if (step.imageUrl) {
       updateStep(stepIndex, { 
         imageUrl: undefined, 
@@ -958,7 +1335,6 @@ const ControlPanel = ({
       return;
     }
     
-    // Add placeholder for image
     updateStep(stepIndex, { 
       imageUrl: '', 
       caption: ''
@@ -969,62 +1345,63 @@ const ControlPanel = ({
     setSteps(steps.filter((_, i) => i !== index));
   };
 
-  // Add new step with default values based on sender
   const addStepBySender = (sender: 'me' | 'them') => {
-    setSteps([...steps, {
+    // Store current length before adding new step
+    const newStepIndex = steps.length;
+    
+    // Create new steps array with the new step
+    const newSteps = [...steps, {
       text: '',
       sender,
-      delay: 1000, // Default to 1 second delay
-      type: 'text',
-      isBusinessMessage: sender === 'them' // Set business message only for "them" sender
-    }]);
+      delay: 1000,
+      type: 'text' as MessageType,
+      isBusinessMessage: sender === 'them'
+    }];
     
-    // Scroll to the newly added step after render
+    // Set the updated steps
+    setSteps(newSteps);
+    
+    // Schedule scrolling to the new step after it's been rendered
     setTimeout(() => {
-      const newIndex = steps.length;
-      stepRefs.current[newIndex]?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center'
-      });
+      if (stepRefs.current[newStepIndex] && stepRefs.current[newStepIndex] !== null) {
+        stepRefs.current[newStepIndex]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }
     }, 100);
   };
 
-  // Handle form submission - start conversation
   const handleFormSubmit = () => {
     if (steps.length === 0) {
       setConversationError('Please add at least one step to the conversation');
       return;
     }
     
-    // Process steps to create proper conversation flow
     const processedSteps = processStepsForConversation(steps);
     onStartConversation(processedSteps);
     setConversationError('');
   };
 
-  // Process steps to extract buttons as separate message steps
   const processStepsForConversation = (stepsToProcess: ConversationStep[]): ConversationStep[] => {
     const processedSteps: ConversationStep[] = [];
     
     stepsToProcess.forEach(step => {
-      // Add the main message step (without buttons property)
       const { buttons, ...mainStep } = step;
       
-      // Ensure imageUrl and caption are preserved in the processed step
-      const processedStep = {
+      const processedStep: ConversationStep = {
         ...mainStep,
-        type: mainStep.imageUrl ? 'image' : mainStep.type || 'text'
+        type: mainStep.imageUrl ? ('image' as MessageType) : (mainStep.type || ('text' as MessageType))
       };
       
       processedSteps.push(processedStep);
       
-      // Add button steps if present
       if (buttons && buttons.length > 0) {
         buttons.forEach(button => {
           processedSteps.push({
             text: button.text,
             sender: step.sender,
-            type: 'button',
+            type: 'button' as MessageType,
             buttonText: button.text,
             isBusinessMessage: true,
             delay: 0,
@@ -1038,16 +1415,12 @@ const ControlPanel = ({
     return processedSteps;
   };
 
-  // ... existing message handlers ...
-
   const handleTemplateAdd = (template: typeof STEP_TEMPLATES[number]) => {
-    // Create main message with buttons attached
     const mainMessage: ConversationStep = {
       ...template.template,
       text: template.template.text
     };
     
-    // If template has buttons, add them to the main message as buttons array
     if (template.buttons) {
       mainMessage.buttons = template.buttons.map(text => ({
         text,
@@ -1055,11 +1428,8 @@ const ControlPanel = ({
       }));
     }
     
-    // Add the new message to steps
     setSteps([...steps, mainMessage]);
   };
-
-  // ... other existing functions ...
 
   const duplicateStep = (index: number) => {
     const newSteps = [...steps];
@@ -1068,33 +1438,28 @@ const ControlPanel = ({
     setSteps(newSteps);
   };
 
-  // ... other existing editor functions ...
-
   const handlePreview = () => {
     if (steps.length === 0) {
       setConversationError('Add some steps to preview the conversation');
       return;
     }
     
-    // Process steps to create preview messages
     const previewMsgs = processStepsForPreview(steps);
     setPreviewMessages(previewMsgs);
     setShowPreview(true);
   };
   
-  // Process steps to create preview messages
   const processStepsForPreview = (stepsToPreview: ConversationStep[]): Message[] => {
     const previewMsgs: Message[] = [];
     
     stepsToPreview.forEach((step, index) => {
-      // Create the main message
       const mainMessage: Message = {
         id: `preview-${index}`,
         timestamp: new Date(),
         status: 'sent',
         text: step.text,
         sender: step.sender,
-        type: step.imageUrl ? 'image' : 'text',
+        type: step.imageUrl ? ('image' as MessageType) : (step.type || ('text' as MessageType)),
         isBusinessMessage: step.sender === 'them' && (step.isBusinessMessage !== false),
         imageUrl: step.imageUrl,
         caption: step.caption
@@ -1102,7 +1467,6 @@ const ControlPanel = ({
       
       previewMsgs.push(mainMessage);
       
-      // If the message has buttons, add them as separate messages
       if (step.buttons && step.buttons.length > 0) {
         step.buttons.forEach((button, btnIndex) => {
           const buttonMessage: Message = {
@@ -1112,7 +1476,7 @@ const ControlPanel = ({
             text: button.text,
             buttonText: button.text,
             sender: step.sender,
-            type: 'button',
+            type: 'button' as MessageType,
             isBusinessMessage: true,
             link: button.url,
             openLinkInWebView: button.openInWebView
@@ -1125,8 +1489,6 @@ const ControlPanel = ({
     
     return previewMsgs;
   };
-
-  // ... existing move functions ...
 
   const handleSwitchToVisualView = () => {
     try {
@@ -1159,98 +1521,154 @@ const ControlPanel = ({
 
   return (
     <Container>
-      <Collapsible>
-        <CollapsibleHeader onClick={() => setContactSettingsOpen(!contactSettingsOpen)}>
-          Contact Settings
-          <span>{contactSettingsOpen ? '▲' : '▼'}</span>
-        </CollapsibleHeader>
-        <CollapsibleContent isOpen={contactSettingsOpen}>
-          <FormGroup>
-            <Label htmlFor="contactName">Name</Label>
-            <Input
-              id="contactName"
-              value={contact.name}
-              onChange={(e) => onUpdateContact({ name: e.target.value })}
-            />
-          </FormGroup>
-          
-          <FormGroup>
-            <Label htmlFor="contactAvatar">Avatar URL</Label>
-            <Input
-              id="contactAvatar"
-              value={contact.avatar}
-              onChange={(e) => onUpdateContact({ avatar: e.target.value })}
-              placeholder="https://example.com/avatar.jpg"
-            />
-          </FormGroup>
-          
-          <FormGroup>
-            <Label htmlFor="contactStatus">Status</Label>
-            <Select
-              id="contactStatus"
-              value={contact.status}
-              onChange={(e) => onUpdateContact({ status: e.target.value as ContactStatus })}
-            >
-              <option value="online">Online</option>
-              <option value="typing">Typing...</option>
-              <option value="offline">Offline</option>
-            </Select>
-          </FormGroup>
-        </CollapsibleContent>
-      </Collapsible>
-      
       <Section>
         <SectionTitle>
-          Create Conversation
-          <IconButton 
-            onClick={() => setShowHelp(!showHelp)} 
-            title="Show/hide help"
-            style={{ marginLeft: '8px', background: 'transparent', padding: '0' }}
-          >
-            <HelpCircle size={16} />
-          </IconButton>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{ position: 'relative', marginRight: '16px' }}>
+              <ContactSettingsButton 
+                ref={contactButtonRef}
+                onClick={() => setContactSettingsVisible(!contactSettingsVisible)}
+                title="Contact Settings"
+              >
+                <img src="/edit_profile.svg" alt="Contact Settings" width="22" height="22" />
+              </ContactSettingsButton>
+              
+              <Collapsible ref={contactSettingsRef} className={contactSettingsVisible ? 'open' : ''}>
+                <CollapsibleHeader>
+                  Contact Settings
+                  <IconButton onClick={() => setContactSettingsVisible(false)}>
+                    <X size={16} />
+                  </IconButton>
+                </CollapsibleHeader>
+                <CollapsibleContent isOpen={true}>
+                  <FormGroup>
+                    <Label htmlFor="contactName">Name</Label>
+                    <Input
+                      id="contactName"
+                      value={contact.name}
+                      onChange={(e) => onUpdateContact({ name: e.target.value })}
+                    />
+                  </FormGroup>
+                  
+                  <FormGroup>
+                    <Label htmlFor="contactAvatar">Avatar URL</Label>
+                    <Input
+                      id="contactAvatar"
+                      value={contact.avatar}
+                      onChange={(e) => onUpdateContact({ avatar: e.target.value })}
+                      placeholder="https://example.com/avatar.jpg"
+                    />
+                  </FormGroup>
+                  
+                  <FormGroup>
+                    <Label htmlFor="contactStatus">Status</Label>
+                    <Select
+                      id="contactStatus"
+                      value={contact.status}
+                      onChange={(e) => onUpdateContact({ status: e.target.value as ContactStatus })}
+                    >
+                      <option value="online">Online</option>
+                      <option value="typing">Typing...</option>
+                      <option value="offline">Offline</option>
+                    </Select>
+                  </FormGroup>
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+            WhatsApp chat simulator
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <EditorTabs>
+              <EditorTab 
+                active={editorMode === 'visual'} 
+                onClick={() => {
+                  if (editorMode === 'json') {
+                    handleSwitchToVisualView();
+                  }
+                  setEditorMode('visual');
+                }}
+                title="Visual Editor"
+              >
+                <Edit3 size={14} />
+                <span>Visual</span>
+              </EditorTab>
+              <EditorTab 
+                active={editorMode === 'json'} 
+                onClick={() => {
+                  handleSwitchToJsonView();
+                  setEditorMode('json');
+                }}
+                title="JSON Editor"
+              >
+                <FileJson size={14} />
+                <span>JSON</span>
+              </EditorTab>
+              <EditorTab
+                active={editorMode === 'saved'}
+                onClick={() => setEditorMode('saved')}
+                title="Saved Conversations"
+              >
+                <Bookmark size={14} />
+                <span>Saved</span>
+              </EditorTab>
+            </EditorTabs>
+            
+            <ToggleButton 
+              onClick={() => setIsControlPanelCollapsed(true)}
+              title="Hide panel"
+              style={{ marginLeft: '8px' }}
+            >
+              <img 
+                src="/sidebar_icon.svg" 
+                alt="Hide panel" 
+                width="18" 
+                height="18"
+              />
+            </ToggleButton>
+          </div>
         </SectionTitle>
         
-        {showHelp && (
-          <HelpPanel>
-            <p>
-              Create a WhatsApp conversation by adding messages below. Enter your text first, then optionally add buttons or an image. 
-              Choose who sends the message using the sender toggle in the top right of each message card.
-            </p>
-            <Button variant="link" onClick={() => setShowHelp(false)}>Hide help</Button>
-          </HelpPanel>
+        {editorMode === 'visual' && (
+          <QuickActionsBar>
+            <QuickActionsHeader onClick={() => setShowTemplates(!showTemplates)}>
+              <h3>
+                <LayoutTemplate size={16} />
+                Message Templates
+              </h3>
+              {showTemplates ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </QuickActionsHeader>
+            <QuickActionsContent isOpen={showTemplates}>
+              <TemplateGrid>
+                {STEP_TEMPLATES.map((template, index) => (
+                  <TemplateCard key={index}>
+                    <TemplateHeader>
+                      {template.icon}
+                      <h4>{template.name}</h4>
+                    </TemplateHeader>
+                    <TemplatePreview>
+                      <p>{template.description}</p>
+                      <TemplatePreviewContainer>
+                        <PreviewBubble>
+                          {template.template.text}
+                        </PreviewBubble>
+                        {template.buttons && template.buttons.map((btn, i) => (
+                          <ButtonPreview key={i}>{btn}</ButtonPreview>
+                        ))}
+                      </TemplatePreviewContainer>
+                      <AddTemplateButton onClick={() => handleTemplateAdd(template)}>
+                        <PlusCircle size={14} />
+                        Add to Conversation
+                      </AddTemplateButton>
+                    </TemplatePreview>
+                  </TemplateCard>
+                ))}
+              </TemplateGrid>
+            </QuickActionsContent>
+          </QuickActionsBar>
         )}
         
         <ConversationFlowContainer>
-          <EditorTabs>
-            <EditorTab 
-              active={editorMode === 'visual'} 
-              onClick={() => {
-                if (editorMode === 'json') {
-                  handleSwitchToVisualView();
-                }
-                setEditorMode('visual');
-              }}
-            >
-              Visual Editor
-            </EditorTab>
-            <EditorTab 
-              active={editorMode === 'json'} 
-              onClick={() => {
-                handleSwitchToJsonView();
-                setEditorMode('json');
-              }}
-            >
-              JSON Editor
-            </EditorTab>
-            <EditorTab
-              active={editorMode === 'saved'}
-              onClick={() => setEditorMode('saved')}
-            >
-              Saved Conversations
-            </EditorTab>
-          </EditorTabs>
-          
           {editorMode === 'saved' ? (
             <SavedConversations
               conversations={savedConversations}
@@ -1288,19 +1706,6 @@ const ControlPanel = ({
             </FormGroup>
           ) : (
             <>
-              <QuickActionsBar>
-                <Label>Quick Add Template:</Label>
-                {STEP_TEMPLATES.map((template, index) => (
-                  <TemplateButton
-                    key={index}
-                    variant="secondary"
-                    onClick={() => handleTemplateAdd(template)}
-                  >
-                    {template.name}
-                  </TemplateButton>
-                ))}
-              </QuickActionsBar>
-              
               {steps.length === 0 ? (
                 <EmptyState>
                   <div style={{ fontSize: '48px', marginBottom: '16px' }}>💬</div>
@@ -1363,7 +1768,6 @@ const ControlPanel = ({
                       </StepHeader>
                       
                       <StepFormContent>
-                        {/* Sender toggle in top right corner */}
                         <MessageSenderToggle>
                           <UserCircle size={14} />
                           <SenderOption 
@@ -1380,7 +1784,6 @@ const ControlPanel = ({
                           </SenderOption>
                         </MessageSenderToggle>
                         
-                        {/* Always show text field first regardless of type */}
                         <FormGroup>
                           <Label>Message</Label>
                           <TextArea
@@ -1391,7 +1794,6 @@ const ControlPanel = ({
                           />
                         </FormGroup>
 
-                        {/* Attachment options below text */}
                         <AttachmentOptions>
                           <AttachmentButton 
                             onClick={() => toggleImageOnMessage(index)}
@@ -1410,7 +1812,6 @@ const ControlPanel = ({
                           </AttachmentButton>
                         </AttachmentOptions>
                         
-                        {/* Show image section if image toggled on */}
                         {step.imageUrl !== undefined && (
                           <ImageSection>
                             <Label>Image</Label>
@@ -1424,10 +1825,9 @@ const ControlPanel = ({
                                   if (file) {
                                     const reader = new FileReader();
                                     reader.onload = (event) => {
-                                      // Use the message text as caption and store image URL
                                       updateStep(index, { 
                                         imageUrl: event.target?.result as string,
-                                        caption: step.text // Use message text as caption
+                                        caption: step.text
                                       });
                                     };
                                     reader.readAsDataURL(file);
@@ -1449,14 +1849,12 @@ const ControlPanel = ({
                               </ImagePreview>
                             )}
                             
-                            {/* Caption note - no separate input needed */}
                             <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
                               <i>The message text above will be used as the image caption</i>
                             </div>
                           </ImageSection>
                         )}
                         
-                        {/* Show buttons section if any buttons added */}
                         {step.buttons && step.buttons.length > 0 && (
                           <ButtonSection>
                             <Label>Buttons</Label>
@@ -1489,38 +1887,83 @@ const ControlPanel = ({
                                       <div style={{ 
                                         marginTop: '8px', 
                                         display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '2px',
-                                        fontSize: '13px'
+                                        flexDirection: 'column',
+                                        alignItems: 'flex-start',
+                                        gap: '6px',
+                                        fontSize: '13px',
+                                        padding: '8px 0'
                                       }}>
-                                        <label style={{ marginRight: '16px' }}>
-                                          <input
-                                            type="radio"
-                                            name={`button-${index}-${btnIndex}-target`}
-                                            checked={button.openInWebView}
-                                            onChange={() => updateMessageButton(
-                                              index,
-                                              btnIndex,
-                                              { openInWebView: true }
-                                            )}
-                                            style={{ marginRight: '4px' }}
-                                          />
-                                          Open in WhatsApp
-                                        </label>
-                                        <label>
-                                          <input
-                                            type="radio"
-                                            name={`button-${index}-${btnIndex}-target`}
-                                            checked={!button.openInWebView}
-                                            onChange={() => updateMessageButton(
-                                              index,
-                                              btnIndex,
-                                              { openInWebView: false }
-                                            )}
-                                            style={{ marginRight: '4px' }}
-                                          />
-                                          Open in new tab
-                                        </label>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '2px' }}>Link opens in:</div>
+                                        <div style={{ 
+                                          display: 'flex', 
+                                          width: '100%',
+                                          gap: '8px'
+                                        }}>
+                                          <label style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center',
+                                            cursor: 'pointer',
+                                            flex: 1,
+                                            padding: '5px 8px',
+                                            borderRadius: '4px',
+                                            backgroundColor: button.openInWebView === true ? 'rgba(18, 140, 126, 0.08)' : 'transparent',
+                                            border: button.openInWebView === true ? '1px solid var(--whatsapp-teal)' : '1px solid #e0e0e0',
+                                            transition: 'all 0.2s ease'
+                                          }}>
+                                            <input
+                                              type="radio"
+                                              checked={button.openInWebView === true}
+                                              onChange={() => updateMessageButton(
+                                                index,
+                                                btnIndex,
+                                                { openInWebView: true }
+                                              )}
+                                              style={{ 
+                                                marginRight: '6px', 
+                                                cursor: 'pointer',
+                                                width: '14px',
+                                                height: '14px'
+                                              }}
+                                            />
+                                            <span style={{ 
+                                              color: button.openInWebView === true ? 'var(--whatsapp-teal)' : 'inherit',
+                                              fontWeight: button.openInWebView === true ? '500' : 'normal',
+                                              fontSize: '12px'
+                                            }}>WhatsApp</span>
+                                          </label>
+                                          <label style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center',
+                                            cursor: 'pointer',
+                                            flex: 1,
+                                            padding: '5px 8px',
+                                            borderRadius: '4px',
+                                            backgroundColor: button.openInWebView === false ? 'rgba(18, 140, 126, 0.08)' : 'transparent',
+                                            border: button.openInWebView === false ? '1px solid var(--whatsapp-teal)' : '1px solid #e0e0e0',
+                                            transition: 'all 0.2s ease'
+                                          }}>
+                                            <input
+                                              type="radio"
+                                              checked={button.openInWebView === false}
+                                              onChange={() => updateMessageButton(
+                                                index,
+                                                btnIndex,
+                                                { openInWebView: false }
+                                              )}
+                                              style={{ 
+                                                marginRight: '6px', 
+                                                cursor: 'pointer',
+                                                width: '14px',
+                                                height: '14px'
+                                              }}
+                                            />
+                                            <span style={{ 
+                                              color: button.openInWebView === false ? 'var(--whatsapp-teal)' : 'inherit',
+                                              fontWeight: button.openInWebView === false ? '500' : 'normal',
+                                              fontSize: '12px'
+                                            }}>New Tab</span>
+                                          </label>
+                                        </div>
                                       </div>
                                     )}
                                   </div>
@@ -1547,7 +1990,6 @@ const ControlPanel = ({
                           </ButtonSection>
                         )}
                         
-                        {/* Simplified delay selector */}
                         <DelaySelector>
                           <Clock size={14} style={{ marginRight: '4px' }} />
                           <span>Delay:</span>
@@ -1673,206 +2115,5 @@ const ControlPanel = ({
     </Container>
   );
 };
-
-// Add this new styled component for the help panel
-const HelpPanel = styled.div`
-  background-color: #f0f9ff;
-  border-left: 4px solid var(--whatsapp-blue);
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  border-radius: 4px;
-  font-size: 14px;
-  
-  p {
-    margin: 0 0 8px 0;
-    color: var(--text-secondary);
-    line-height: 1.5;
-  }
-`;
-
-const MessageTypeCard = styled.div<{ active: boolean }>`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  border-radius: 8px;
-  background-color: ${props => props.active ? 'rgba(37, 211, 102, 0.1)' : 'white'};
-  border: 1px solid ${props => props.active ? 'var(--whatsapp-teal)' : 'var(--border-color)'};
-  cursor: pointer;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-  }
-  
-  svg {
-    margin-bottom: 8px;
-    color: ${props => props.active ? 'var(--whatsapp-teal)' : 'var(--text-secondary)'};
-  }
-`
-
-const MessageTypeTitle = styled.span`
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-`
-
-const MessageTypeDescription = styled.span`
-  font-size: 12px;
-  color: var(--text-secondary);
-  text-align: center;
-  margin-top: 4px;
-`
-
-const DelayPresetContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 8px;
-`
-
-const DelayPresetRow = styled.div`
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-`
-
-const DelayOption = styled.button<{ active?: boolean }>`
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  border: 1px solid ${props => props.active ? 'var(--whatsapp-teal)' : 'var(--border-color)'};
-  background: ${props => props.active ? 'var(--whatsapp-teal)' : 'white'};
-  color: ${props => props.active ? 'white' : 'var(--text-primary)'};
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex: 1;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  
-  &:hover {
-    background: ${props => props.active ? 'var(--whatsapp-teal)' : 'rgba(37, 211, 102, 0.1)'};
-  }
-`
-
-const ButtonOptions = styled.div`
-  background-color: #f9f9f9;
-  border-radius: 8px;
-  padding: 16px;
-  margin-top: 16px;
-  border: 1px solid var(--border-color);
-`
-
-const ButtonOptionHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-`
-
-const ButtonList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: 300px;
-  overflow-y: auto;
-`
-
-const ButtonItem = styled.div`
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  background: white;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-`
-
-const ButtonCount = styled.div`
-  background-color: var(--whatsapp-teal);
-  color: white;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-size: 12px;
-  font-weight: 500;
-`
-
-const MessageSenderToggle = styled.div`
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-`;
-
-const SenderOption = styled.button<{ active: boolean }>`
-  background: ${props => props.active ? 'var(--whatsapp-teal)' : 'transparent'};
-  color: ${props => props.active ? 'white' : 'var(--text-secondary)'};
-  border: 1px solid ${props => props.active ? 'var(--whatsapp-teal)' : 'var(--border-color)'};
-  padding: 6px 12px;
-  border-radius: 16px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: ${props => props.active ? 'var(--whatsapp-teal)' : 'rgba(0,0,0,0.05)'};
-  }
-`;
-
-const AttachmentOptions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
-`;
-
-const AttachmentButton = styled.button<{ active?: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: ${props => props.active ? 'rgba(37, 211, 102, 0.1)' : 'transparent'};
-  border: 1px solid ${props => props.active ? 'var(--whatsapp-teal)' : 'var(--border-color)'};
-  color: var(--text-secondary);
-  padding: 6px 12px;
-  border-radius: 16px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: rgba(0,0,0,0.05);
-  }
-`;
-
-const ImageSection = styled.div`
-  margin-top: 16px;
-  padding: 16px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-`;
-
-const ButtonSection = styled.div`
-  margin-top: 16px;
-  padding: 16px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-`;
-
-const DelaySelector = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 16px;
-`;
 
 export default ControlPanel;
