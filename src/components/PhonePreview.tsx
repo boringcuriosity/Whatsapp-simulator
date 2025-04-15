@@ -412,7 +412,7 @@ const UrlIconWrapper = styled.span`
   }
 `
 
-const BusinessMessageContainer = styled.div<{ sender?: 'me' | 'them' }>`
+const BusinessMessageContainer = styled.div<{ sender?: 'me' | 'them' | null }>`
   display: flex;
   flex-direction: column;
   width: 100%;

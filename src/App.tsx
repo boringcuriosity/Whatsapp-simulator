@@ -179,17 +179,6 @@ function App() {
   // State for message type and settings
   const [contactSettingsOpen, setContactSettingsOpen] = useState(false); // Closed by default
   const [messageType, setMessageType] = useState<'text' | 'business' | 'conversation'>('conversation');
-  const [newTextMessage, setNewTextMessage] = useState({
-    text: '',
-    sender: 'me' as const
-  });
-  const [businessMessage, setBusinessMessage] = useState({
-    text: '',
-    options: ['Yes', 'No'],
-    phoneNumber: '+91 984XXXXX34',
-    highlightedText: '',
-    sender: 'them' as const
-  });
   
   // State for conversation flow
   const [conversationFlow, setConversationFlow] = useState<string>('[]');
@@ -645,10 +634,6 @@ function App() {
             setContactSettingsOpen={setContactSettingsOpen}
             messageType={messageType}
             setMessageType={setMessageType}
-            newTextMessage={newTextMessage}
-            setNewTextMessage={setNewTextMessage}
-            businessMessage={businessMessage}
-            setBusinessMessage={setBusinessMessage}
             conversationFlow={conversationFlow}
             setConversationFlow={setConversationFlow}
             steps={steps}

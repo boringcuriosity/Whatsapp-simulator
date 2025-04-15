@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
-import { Copy, Trash2, ArrowUp, ArrowDown, HelpCircle, PlusCircle, Image, MessageSquare, Clock, UserCircle, Edit3, FileJson, Bookmark, Info, MousePointer2, LayoutTemplate, ChevronDown, ChevronUp, Settings, X } from 'lucide-react'
+import { Copy, Trash2, ArrowUp, ArrowDown, PlusCircle, Image, MessageSquare, Clock, UserCircle, Edit3, FileJson, Bookmark, Info, MousePointer2, LayoutTemplate, ChevronDown, ChevronUp, X } from 'lucide-react'
 import { Message, Contact, MessageStatus, ContactStatus, ConversationStep, MessageButton, MessageType } from '../types'
 import PhonePreview from './PhonePreview'
 import SavedConversations from './SavedConversations'
@@ -253,122 +253,6 @@ const ContactSettingsButton = styled.button`
   }
 `
 
-const MessageInputContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 16px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background-color: #f9f9f9;
-
-  @media (max-width: 768px) {
-    padding: 12px;
-    gap: 12px;
-  }
-`
-
-const MessageTypeSelector = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 4px;
-  }
-`
-
-const MessageTypeButton = styled.button<{ active: boolean }>`
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  background-color: ${props => props.active ? 'var(--whatsapp-green)' : '#f0f2f5'};
-  color: ${props => props.active ? 'white' : 'var(--text-primary)'};
-  border: none;
-  
-  &:hover {
-    opacity: 0.9;
-  }
-
-  @media (max-width: 768px) {
-    padding: 12px;
-    font-size: 15px;
-  }
-`
-
-const BusinessOptionsContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-color);
-`
-
-const OptionButtonsContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`
-
-const OptionButton = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`
-
-const OptionInput = styled.input`
-  flex: 1;
-  padding: 8px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 14px;
-  
-  &:focus {
-    outline: none;
-    border-color: var(--whatsapp-green);
-  }
-`
-
-const RemoveButton = styled.button`
-  padding: 4px 8px;
-  border-radius: 4px;
-  background-color: #f44336;
-  color: white;
-  border: none;
-  cursor: pointer;
-  font-size: 12px;
-  margin-left: 8px;
-`
-
-const ConversationFlowContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 16px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background-color: #f9f9f9;
-`
-
-const ConversationTextArea = styled.textarea`
-  padding: 10px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 14px;
-  min-height: 200px;
-  resize: vertical;
-  font-family: monospace;
-  
-  &:focus {
-    outline: none;
-    border-color: var(--whatsapp-green);
-  }
-`
-
 const ErrorMessage = styled.div`
   color: #f44336;
   font-size: 14px;
@@ -601,18 +485,6 @@ const AddTemplateButton = styled.button`
   }
 `;
 
-const TemplateButton = styled(Button)`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-
-  &::before {
-    content: '+';
-    font-weight: bold;
-  }
-`
-
 const EditorTabs = styled.div`
   display: inline-flex;
   position: relative;
@@ -713,44 +585,6 @@ const EmptyState = styled.div`
   text-align: center;
 `
 
-const DelayInput = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`
-
-const DelaySlider = styled.input`
-  flex: 1;
-  height: 4px;
-  -webkit-appearance: none;
-  background: #ddd;
-  border-radius: 2px;
-  outline: none;
-  
-  &::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: var(--whatsapp-teal);
-    cursor: pointer;
-  }
-`
-
-const DelayPreset = styled.button<{ active?: boolean }>`
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  border: 1px solid var(--whatsapp-teal);
-  background: ${props => props.active ? 'var(--whatsapp-teal)' : 'transparent'};
-  color: ${props => props.active ? 'white' : 'var(--whatsapp-teal)'};
-  cursor: pointer;
-  
-  &:hover {
-    background: ${props => props.active ? 'var(--whatsapp-teal)' : 'rgba(37, 211, 102, 0.1)'};
-  }
-`
-
 const PreviewOverlay = styled.div<{ show: boolean }>`
   display: ${props => props.show ? 'flex' : 'none'};
   position: fixed;
@@ -784,32 +618,29 @@ const PreviewContainer = styled.div`
   }
 `
 
-const StepTypeSelector = styled.div`
+const ConversationFlowContainer = styled.div`
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  background: #f5f5f5;
-  padding: 12px;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
+  background-color: #f9f9f9;
 `
 
-const TypeSelectorButton = styled(Button)<{ active: boolean }>`
-  flex: 1;
-  background: ${props => props.active ? 'var(--whatsapp-teal)' : 'white'};
-  color: ${props => props.active ? 'white' : 'var(--text-primary)'};
-  border: 1px solid ${props => props.active ? 'var(--whatsapp-teal)' : 'var(--border-color)'};
+const ConversationTextArea = styled.textarea`
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  min-height: 200px;
+  resize: vertical;
+  font-family: monospace;
   
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  &:focus {
+    outline: none;
+    border-color: var(--whatsapp-green);
   }
-`
-
-const StepFormContent = styled.div`
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 `
 
 const IconButton = styled(Button)`
@@ -834,7 +665,6 @@ const IconButton = styled(Button)`
     color: ${props => props.variant === 'danger' ? '#f44336' : '#2196f3'};
     transform: translateY(-1px);
   }
-
   &:active {
     transform: translateY(0);
   }
@@ -846,135 +676,11 @@ const IconButton = styled(Button)`
   }
 `
 
-const ImagePreview = styled.div`
-  position: relative;
-  margin: 16px 0;
-  
-  img {
-    width: 100%;
-    max-width: 300px;
-    border-radius: 8px;
-    display: block;
-  }
-`
-
-const ImageUploadButton = styled.label`
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: #f0f2f5;
+const StepFormContent = styled.div`
+  background: white;
+  padding: 20px;
   border-radius: 8px;
-  cursor: pointer;
-  color: var(--text-primary);
-  border: 1px dashed var(--border-color);
-  transition: all 0.2s;
-  
-  &:hover {
-    background: #e8eaed;
-  }
-  
-  input[type="file"] {
-    display: none;
-  }
-`
-
-const RemoveImageButton = styled(IconButton)`
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(0, 0, 0, 0.5);
-  color: white;
-  
-  &:hover {
-    background: rgba(244, 67, 54, 0.8);
-    color: white;
-  }
-`
-
-const RadioGroup = styled.div`
-  display: flex;
-  gap: 16px;
-  padding: 16px;
-  background: #f7f7f7;
-  border-radius: 8px;
-  margin-top: 8px;
-`
-
-const StyledRadioLabel = styled.label<{ isSelected: boolean }>`
-  display: flex;
-  align-items: center;
-  padding: 8px 16px;
-  gap: 8px;
-  background: ${props => props.isSelected ? 'white' : 'transparent'};
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid ${props => props.isSelected ? 'var(--whatsapp-teal)' : '#ddd'};
-  
-  &:hover {
-    background: ${props => props.isSelected ? 'white' : '#f0f0f0'};
-  }
-`
-
-const RadioButton = styled.input`
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border: 2px solid ${props => props.checked ? 'var(--whatsapp-teal)' : '#999'};
-  border-radius: 50%;
-  margin: 0;
-  position: relative;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:checked {
-    border-color: var(--whatsapp-teal);
-    &:after {
-      content: '';
-      position: absolute;
-      top: 3px;
-      left: 3px;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--whatsapp-teal);
-    }
-  }
-
-  &:hover {
-    border-color: var(--whatsapp-teal);
-  }
-`
-
-const RadioText = styled.span<{ isSelected: boolean }>`
-  color: ${props => props.isSelected ? 'var(--whatsapp-teal)' : 'var(--text-primary)'};
-  font-weight: ${props => props.isSelected ? '500' : 'normal'};
-  font-size: 14px;
-`
-
-const ToggleButton = styled.button`
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    background: rgba(0, 0, 0, 0.05);
-    color: var(--whatsapp-teal);
-  }
-  
-  svg {
-    width: 18px;
-    height: 18px;
-  }
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 `
 
 const MessageSenderToggle = styled.div`
@@ -1045,6 +751,52 @@ const ImageSection = styled.div`
   border: 1px solid #eee;
 `
 
+const ImagePreview = styled.div`
+  position: relative;
+  margin: 16px 0;
+  
+  img {
+    width: 100%;
+    max-width: 300px;
+    border-radius: 8px;
+    display: block;
+  }
+`
+
+const ImageUploadButton = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #f0f2f5;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-primary);
+  border: 1px dashed var(--border-color);
+  transition: all 0.2s;
+  
+  &:hover {
+    background: #e8eaed;
+  }
+  
+  input[type="file"] {
+    display: none;
+  }
+`
+
+const RemoveImageButton = styled(IconButton)`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  
+  &:hover {
+    background: rgba(244, 67, 54, 0.8);
+    color: white;
+  }
+`
+
 const ButtonSection = styled.div`
   margin-top: 16px;
   padding: 16px;
@@ -1110,6 +862,30 @@ const DelayOption = styled.button<{ active: boolean }>`
   }
 `
 
+const ToggleButton = styled.button`
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--whatsapp-teal);
+  }
+  
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+`
+
 const STEP_TEMPLATES = [
   {
     name: 'Question with Yes/No',
@@ -1165,22 +941,6 @@ interface ControlPanelProps {
   setContactSettingsOpen: (open: boolean) => void;
   messageType: 'text' | 'business' | 'conversation';
   setMessageType: (type: 'text' | 'business' | 'conversation') => void;
-  newTextMessage: { text: string; sender: 'me' };
-  setNewTextMessage: React.Dispatch<React.SetStateAction<{ text: string; sender: 'me' }>>;
-  businessMessage: {
-    text: string;
-    options: string[];
-    phoneNumber: string;
-    highlightedText: string;
-    sender: 'them';
-  };
-  setBusinessMessage: React.Dispatch<React.SetStateAction<{
-    text: string;
-    options: string[];
-    phoneNumber: string;
-    highlightedText: string;
-    sender: 'them';
-  }>>;
   conversationFlow: string;
   setConversationFlow: (flow: string) => void;
   steps: ConversationStep[];
@@ -1197,33 +957,24 @@ interface ControlPanelProps {
   onLoadSavedConversation: (conversation: SavedConversation) => void;
   onDeleteSavedConversation: (id: string) => void;
   onSaveCurrentConversation: () => void;
-  isControlPanelCollapsed: boolean;
-  setIsControlPanelCollapsed: (collapsed: boolean) => void;
+  isControlPanelCollapsed?: boolean;
+  setIsControlPanelCollapsed?: (collapsed: boolean) => void;
 }
 
 const ControlPanel = ({
   contact,
   messages,
   onUpdateContact,
-  onAddMessage,
   onUpdateMessage,
   onDeleteMessage,
   onClearMessages,
   onStartConversation,
-  contactSettingsOpen,
-  setContactSettingsOpen,
   messageType,
   setMessageType,
-  newTextMessage,
-  setNewTextMessage,
-  businessMessage,
-  setBusinessMessage,
   conversationFlow,
   setConversationFlow,
   steps,
   setSteps,
-  showJsonPreview,
-  setShowJsonPreview,
   showPreview,
   setShowPreview,
   previewMessages,
@@ -1234,19 +985,16 @@ const ControlPanel = ({
   onLoadSavedConversation,
   onDeleteSavedConversation,
   onSaveCurrentConversation,
-  isControlPanelCollapsed,
   setIsControlPanelCollapsed
 }: ControlPanelProps) => {
   const stepRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const [linkOpeningBehavior, setLinkOpeningBehavior] = useState<'webview' | 'newtab'>('webview');
+  const [linkOpeningBehavior] = useState<'webview' | 'newtab'>('webview');
   const [editorMode, setEditorMode] = useState<EditorMode>('visual');
-  const [showHelp, setShowHelp] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [contactSettingsVisible, setContactSettingsVisible] = useState(false);
-
   const contactSettingsRef = useRef<HTMLDivElement>(null);
   const contactButtonRef = useRef<HTMLButtonElement>(null);
-
+  
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (contactSettingsRef.current &&
@@ -1262,7 +1010,7 @@ const ControlPanel = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-
+  
   useEffect(() => {
     if (messageType !== 'conversation') {
       setMessageType('conversation');
@@ -1346,10 +1094,7 @@ const ControlPanel = ({
   };
 
   const addStepBySender = (sender: 'me' | 'them') => {
-    // Store current length before adding new step
     const newStepIndex = steps.length;
-    
-    // Create new steps array with the new step
     const newSteps = [...steps, {
       text: '',
       sender,
@@ -1357,11 +1102,7 @@ const ControlPanel = ({
       type: 'text' as MessageType,
       isBusinessMessage: sender === 'them'
     }];
-    
-    // Set the updated steps
     setSteps(newSteps);
-    
-    // Schedule scrolling to the new step after it's been rendered
     setTimeout(() => {
       if (stepRefs.current[newStepIndex] && stepRefs.current[newStepIndex] !== null) {
         stepRefs.current[newStepIndex]?.scrollIntoView({
@@ -1614,18 +1355,20 @@ const ControlPanel = ({
               </EditorTab>
             </EditorTabs>
             
-            <ToggleButton 
-              onClick={() => setIsControlPanelCollapsed(true)}
-              title="Hide panel"
-              style={{ marginLeft: '8px' }}
-            >
-              <img 
-                src="/sidebar_icon.svg" 
-                alt="Hide panel" 
-                width="18" 
-                height="18"
-              />
-            </ToggleButton>
+            {setIsControlPanelCollapsed && (
+              <ToggleButton 
+                onClick={() => setIsControlPanelCollapsed(true)}
+                title="Hide panel"
+                style={{ marginLeft: '8px' }}
+              >
+                <img 
+                  src="/sidebar_icon.svg" 
+                  alt="Hide panel" 
+                  width="18" 
+                  height="18"
+                />
+              </ToggleButton>
+            )}
           </div>
         </SectionTitle>
         
