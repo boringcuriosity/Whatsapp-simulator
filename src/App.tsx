@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import styled from 'styled-components'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import PhonePreview from './components/PhonePreview'
@@ -198,6 +198,9 @@ function App() {
   const [savedConversations, setSavedConversations] = useState<SavedConversation[]>([]);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
 
+  // Add a ref to track if an operation is in progress
+  const isProcessingRef = useRef(false);
+
   // Load saved conversations on mount
   useEffect(() => {
     try {
@@ -268,51 +271,222 @@ function App() {
     }
   }, [steps]);
 
-  // Add these new functions for manual control
   const handlePreviousStep = () => {
     // Allow going back if there are messages
     if (messages.length === 0) return;
     
-    // Ensure savedConversation is populated if not already
-    if (savedConversation.length === 0 && steps.length > 0) {
-      setSavedConversation(steps);
-    }
+    // Check if there are grouped buttons we need to handle specially
+    const lastMessages = messages.slice(-3); // Check last few messages
+    const lastButtonGroup = lastMessages.filter(msg => msg.type === 'button');
     
-    // Remove the last message
-    setMessages(prev => prev.slice(0, -1));
-    setCurrentStepIndex(prev => Math.max(-1, prev - 1));
+    // If the last message was part of a button group, remove the entire group
+    if (lastButtonGroup.length > 0 && lastMessages[lastMessages.length - 1].type === 'button') {
+      // Find all consecutive buttons at the end
+      let buttonCount = 0;
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].type === 'button') {
+          buttonCount++;
+        } else {
+          break;
+        }
+      }
+      
+      // Remove all buttons in the group
+      setMessages(prev => prev.slice(0, prev.length - buttonCount));
+      setCurrentStepIndex(prev => Math.max(-1, prev - buttonCount));
+    } else {
+      // Just remove the last message
+      setMessages(prev => prev.slice(0, -1));
+      setCurrentStepIndex(prev => Math.max(-1, prev - 1));
+    }
   };
 
   const handleNextStep = () => {
+    // If we're already processing a step, don't allow another click
+    if (isProcessingRef.current) return;
+
     try {
-      // If we have steps, use them directly
-      if (steps.length > 0) {
-        // If no messages yet, start with first message
-        if (messages.length === 0) {
-          const firstMessage = steps[0];
-          addMessageImmediately(firstMessage);
-          setCurrentStepIndex(0);
-          return;
+      // If we have no steps at all, do nothing
+      if (steps.length === 0) return;
+
+      // Mark that we're processing a step
+      isProcessingRef.current = true;
+
+      // Process steps to make them consistent with how the play button works
+      if (savedConversation.length === 0) {
+        // Process steps to extract buttons as separate steps (same as startConversation)
+        const processedSteps: ConversationStep[] = [];
+        
+        steps.forEach(step => {
+          if (!step) return; // Skip undefined steps
+          
+          // Add the main message step (without buttons property)
+          const { buttons, ...mainStep } = step;
+          
+          // Ensure type is properly set based on content
+          const processedStep: ConversationStep = {
+            ...mainStep,
+            type: mainStep.imageUrl ? 'image' : (mainStep.type as MessageType || 'text')
+          };
+          
+          processedSteps.push(processedStep);
+          
+          // Add button steps if present
+          if (buttons && buttons.length > 0) {
+            buttons.forEach(button => {
+              if (button && typeof button === 'object') {
+                const buttonStep: ConversationStep = {
+                  text: button.text || "",
+                  sender: step.sender,
+                  type: 'button',
+                  buttonText: button.text || "",
+                  isBusinessMessage: true,
+                  delay: 0,
+                  link: button.url,
+                  openLinkInWebView: button.openInWebView
+                };
+                processedSteps.push(buttonStep);
+              }
+            });
+          }
+        });
+        
+        setSavedConversation(processedSteps);
+      }
+
+      // Use processed steps for consistency
+      const stepsToUse = savedConversation.length > 0 ? savedConversation : steps;
+      
+      // If no messages yet, start with first message
+      if (messages.length === 0) {
+        const firstMessage = stepsToUse[0];
+        
+        // Add the first message immediately
+        addMessageImmediately(firstMessage);
+
+        // Now update the current index synchronously to avoid race conditions
+        let newCurrentIndex = 0;
+        setCurrentStepIndex(newCurrentIndex);
+        
+        // If the first message has buttons in the original steps, handle them
+        const originalStep = steps[0];
+        if (originalStep && originalStep.buttons && originalStep.buttons.length > 0) {
+          const buttonMessages: Message[] = [];
+          
+          originalStep.buttons.forEach((button, idx) => {
+            if (button && typeof button === 'object') {
+              const buttonMessage: Message = {
+                id: `${Date.now().toString()}-btn-${idx}`,
+                text: button.text || '',
+                buttonText: button.text || '',
+                sender: originalStep.sender,
+                timestamp: new Date(),
+                status: 'sent',
+                type: 'button',
+                isBusinessMessage: true,
+                link: button.url,
+                openLinkInWebView: button.openInWebView
+              };
+              buttonMessages.push(buttonMessage);
+              newCurrentIndex++;
+            }
+          });
+          
+          // Update messages with all buttons at once to prevent race conditions
+          if (buttonMessages.length > 0) {
+            setMessages(prev => [...prev, ...buttonMessages]);
+            setCurrentStepIndex(newCurrentIndex);
+          }
         }
         
-        // If we haven't started yet
-        if (currentStepIndex === -1) {
-          const firstMessage = steps[0];
-          addMessageImmediately(firstMessage);
-          setCurrentStepIndex(0);
-          return;
-        }
+        // Release processing lock
+        isProcessingRef.current = false;
+        return;
+      }
+      
+      // If we're still within bounds of the steps array
+      if (currentStepIndex < stepsToUse.length - 1) {
+        const nextStep = stepsToUse[currentStepIndex + 1];
         
-        // If we're not at the end
-        if (currentStepIndex < steps.length - 1) {
-          const nextStep = steps[currentStepIndex + 1];
+        // For messages with grouped buttons, we need special handling
+        const currentMessage = messages[messages.length - 1];
+        
+        // If current message is a regular message and next step is a button,
+        // check if there are multiple buttons to add at once
+        if (nextStep.type === 'button' && currentMessage.type !== 'button') {
+          // Find all consecutive buttons
+          const buttonsToAdd: ConversationStep[] = [];
+          let idx = currentStepIndex + 1;
+          
+          // Collect all consecutive button messages
+          while (idx < stepsToUse.length && stepsToUse[idx].type === 'button') {
+            buttonsToAdd.push(stepsToUse[idx]);
+            idx++;
+          }
+          
+          // Add all button messages at once rather than with delays
+          const allButtonMessages: Message[] = [];
+          let newCurrentIndex = currentStepIndex;
+          
+          // Add the first button message
+          const firstButton = buttonsToAdd[0];
+          const firstButtonMsg = createMessageFromStep(firstButton);
+          allButtonMessages.push(firstButtonMsg);
+          newCurrentIndex++;
+          
+          // Add remaining buttons if any
+          if (buttonsToAdd.length > 1) {
+            for (let i = 1; i < buttonsToAdd.length; i++) {
+              const buttonMessage = createMessageFromStep(buttonsToAdd[i]);
+              allButtonMessages.push(buttonMessage);
+              newCurrentIndex++;
+            }
+          }
+          
+          // Update messages and step index at once to prevent race conditions
+          setMessages(prev => [...prev, ...allButtonMessages]);
+          setCurrentStepIndex(newCurrentIndex);
+        } else {
+          // Regular case - just add next message
           addMessageImmediately(nextStep);
-          setCurrentStepIndex(prev => prev + 1);
+          setCurrentStepIndex(currentStepIndex + 1);
         }
       }
+      
+      // Release processing lock after a short delay to prevent double-clicks
+      setTimeout(() => {
+        isProcessingRef.current = false;
+      }, 100);
     } catch (error) {
       console.error("Error adding next step:", error);
+      isProcessingRef.current = false;
     }
+  };
+
+  // Helper function to create a message object from a conversation step
+  const createMessageFromStep = (step: ConversationStep): Message => {
+    let formattedText = step.text || '';
+    if (step.highlightedText) {
+      formattedText = formattedText.replace(
+        step.highlightedText,
+        `*${step.highlightedText}*`
+      );
+    }
+    
+    return {
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 9), // Ensure unique ID
+      text: formattedText,
+      sender: step.sender,
+      timestamp: new Date(),
+      status: 'sent',
+      type: (step.type as MessageType) || 'text',
+      isBusinessMessage: step.isBusinessMessage,
+      buttonText: step.buttonText,
+      link: step.link,
+      openLinkInWebView: step.openLinkInWebView,
+      imageUrl: step.imageUrl,
+      caption: step.caption
+    };
   };
 
   // Helper function to add message immediately without delays
@@ -332,51 +506,8 @@ function App() {
         }, 200);
       }
       
-      // Format and add the message immediately
-      let formattedText = step.text || '';
-      if (step.highlightedText) {
-        formattedText = formattedText.replace(
-          step.highlightedText,
-          `*${step.highlightedText}*`
-        );
-      }
-      
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        text: formattedText,
-        sender: step.sender,
-        timestamp: new Date(),
-        status: 'sent',
-        type: (step.type as MessageType) || 'text',
-        isBusinessMessage: step.isBusinessMessage,
-        buttonText: step.buttonText,
-        link: step.link,
-        openLinkInWebView: step.openLinkInWebView,
-        imageUrl: step.imageUrl,
-        caption: step.caption
-      };
-      
+      const newMessage = createMessageFromStep(step);
       setMessages(prev => [...prev, newMessage]);
-      
-      // If this message has buttons, add them as separate messages
-      if (step.buttons && step.buttons.length > 0) {
-        step.buttons.forEach(button => {
-          const buttonMessage: Message = {
-            id: `${Date.now().toString()}-btn-${button.text}`,
-            text: button.text || '',
-            buttonText: button.text || '',
-            sender: step.sender,
-            timestamp: new Date(),
-            status: 'sent',
-            type: 'button',
-            isBusinessMessage: true,
-            link: button.url,
-            openLinkInWebView: button.openInWebView
-          };
-          
-          setMessages(prev => [...prev, buttonMessage]);
-        });
-      }
     } catch (error) {
       console.error("Error adding message immediately:", error);
     }
@@ -417,7 +548,6 @@ function App() {
     setMessages([]);
   };
 
-  // Modified startConversation to handle buttons correctly
   const startConversation = (steps: ConversationStep[]) => {
     try {
       // Process steps to extract buttons as separate steps
@@ -482,51 +612,64 @@ function App() {
       }
       
       // Clear existing messages when starting a new conversation from the sidebar
-      // Only do this when explicitly starting from scratch, not when resuming
       setMessages([]);
       
-      // If there's a saved conversation, start it from the beginning
-      if (savedConversation.length > 0) {
-        // Create a fresh copy of the saved conversation
-        setConversationQueue([...savedConversation]);
+      // Use the steps from the control panel only if they exist
+      if (steps.length > 0) {
+        // Process steps to extract buttons as separate steps (same as startConversation)
+        const processedSteps: ConversationStep[] = [];
+        
+        steps.forEach(step => {
+          if (!step) return; // Skip undefined steps
+          
+          // Add the main message step (without buttons property)
+          const { buttons, ...mainStep } = step;
+          
+          // Ensure type is properly set based on content
+          const processedStep: ConversationStep = {
+            ...mainStep,
+            type: mainStep.imageUrl ? 'image' : (mainStep.type as MessageType || 'text')
+          };
+          
+          processedSteps.push(processedStep);
+          
+          // Add button steps if present
+          if (buttons && buttons.length > 0) {
+            buttons.forEach(button => {
+              if (button && typeof button === 'object') {
+                const buttonStep: ConversationStep = {
+                  text: button.text || "",
+                  sender: step.sender,
+                  type: 'button',
+                  buttonText: button.text || "",
+                  isBusinessMessage: true,
+                  delay: 0,
+                  link: button.url,
+                  openLinkInWebView: button.openInWebView
+                };
+                processedSteps.push(buttonStep);
+              }
+            });
+          }
+        });
+        
+        setSavedConversation(processedSteps);
+        setConversationQueue([...processedSteps]);
+        setCurrentStepIndex(-1);
         setIsPlayingConversation(true);
         return;
       }
-      
-      // Only use default conversation if no saved conversation exists
-      const defaultConversation: ConversationStep[] = [
-        {
-          text: "Is +91 984XXXXX34 linked to your business bank accounts?",
-          sender: "them",
-          isBusinessMessage: true,
-          delay: 1000
-        },
-        {
-          text: "Yes",
-          sender: "them",
-          type: "button",
-          isBusinessMessage: true,
-          delay: 0
-        },
-        {
-          text: "No",
-          sender: "them",
-          type: "button",
-          isBusinessMessage: true,
-          delay: 0
-        }
-      ];
-      
-      setSavedConversation(defaultConversation);
-      // Create a fresh copy of the default conversation
-      setConversationQueue([...defaultConversation]);
-      setIsPlayingConversation(true);
+      else {
+        // Don't show any default conversation if no steps exist
+        // Just inform the user that they need to add steps first
+        setConversationError("Please add conversation steps in the control panel first.");
+        return;
+      }
     } catch (error) {
       console.error("Error handling play conversation:", error);
     }
   };
 
-  // Update useEffect to work better with buttons
   useEffect(() => {
     if (!isPlayingConversation || conversationQueue.length === 0) return;
     
@@ -679,7 +822,8 @@ function App() {
           onClick={handleNextStep}
           disabled={
             steps.length === 0 || 
-            (currentStepIndex >= steps.length - 1 && messages.length > 0)
+            (savedConversation.length > 0 && currentStepIndex >= savedConversation.length - 1) ||
+            (savedConversation.length === 0 && currentStepIndex >= steps.length - 1)
           }
           title="Next message"
         >
