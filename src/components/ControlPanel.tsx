@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
-import { Copy, Trash2, ArrowUp, ArrowDown, PlusCircle, Image, MessageSquare, Clock, UserCircle, Edit3, FileJson, Bookmark, Info, MousePointer2, LayoutTemplate, ChevronDown, ChevronUp, X } from 'lucide-react'
+import { Copy, Trash2, ArrowUp, ArrowDown, PlusCircle, Image, MessageSquare, Clock, UserCircle, Edit3, FileJson, Bookmark, Info, MousePointer2, LayoutTemplate, ChevronDown, ChevronUp, X, User, Store } from 'lucide-react'
 import { Message, Contact, MessageStatus, ContactStatus, ConversationStep, MessageButton, MessageType } from '../types'
 import PhonePreview from './PhonePreview'
 import SavedConversations from './SavedConversations'
@@ -572,6 +572,97 @@ const ActionButton = styled(Button)`
   }
 `
 
+const DropdownContainer = styled.div`
+  position: relative;
+  display: inline-block;
+`
+
+const DropdownContent = styled.div<{ isOpen: boolean }>`
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  background-color: white;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  border-radius: 8px;
+  padding: 8px 0;
+  z-index: 100;
+  margin-bottom: 8px;
+  display: ${props => props.isOpen ? 'block' : 'none'};
+`
+
+const DropdownItem = styled.button`
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  &:hover {
+    background-color: #f0f2f5;
+  }
+`
+
+const IconButton = styled(Button)`
+  width: 32px;
+  height: 32px;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  &:hover {
+    background: ${props => props.variant === 'danger' ? '#ffebee' : '#e3f2fd'};
+    color: ${props => props.variant === 'danger' ? '#f44336' : '#2196f3'};
+    transform: translateY(-1px);
+  }
+  &:active {
+    transform: translateY(0);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+`
+
+const SaveIconButton = styled(IconButton)`
+  background-color: #f0f2f5;
+  color: var(--text-secondary);
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  
+  &:hover {
+    background-color: #e4e6eb;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+`
+
 const EmptyState = styled.div`
   display: flex;
   flex-direction: column;
@@ -640,39 +731,6 @@ const ConversationTextArea = styled.textarea`
   &:focus {
     outline: none;
     border-color: var(--whatsapp-green);
-  }
-`
-
-const IconButton = styled(Button)`
-  width: 32px;
-  height: 32px;
-  padding: 6px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  color: var(--text-secondary);
-  transition: all 0.2s ease;
-  
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-  
-  &:hover {
-    background: ${props => props.variant === 'danger' ? '#ffebee' : '#e3f2fd'};
-    color: ${props => props.variant === 'danger' ? '#f44336' : '#2196f3'};
-    transform: translateY(-1px);
-  }
-  &:active {
-    transform: translateY(0);
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    pointer-events: none;
   }
 `
 
@@ -994,9 +1052,22 @@ const ControlPanel = ({
   const [contactSettingsVisible, setContactSettingsVisible] = useState(false);
   const contactSettingsRef = useRef<HTMLDivElement>(null);
   const contactButtonRef = useRef<HTMLButtonElement>(null);
+  const [showMessageDropdown, setShowMessageDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isConversationSaved, setIsConversationSaved] = useState(false);
+  
+  // Track contact info for detecting changes
+  const [savedContactInfo, setSavedContactInfo] = useState({
+    name: contact.name,
+    avatar: contact.avatar
+  });
   
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowMessageDropdown(false);
+      }
+      
       if (contactSettingsRef.current &&
           !contactSettingsRef.current.contains(event.target as Node) && 
           contactButtonRef.current && 
@@ -1011,11 +1082,73 @@ const ControlPanel = ({
     };
   }, []);
   
+  // Detect changes in steps to mark conversation as unsaved
+  useEffect(() => {
+    if (steps.length > 0) {
+      setIsConversationSaved(false);
+    }
+  }, [steps]);
+  
+  // Check if the current contact settings don't match saved contact info
+  useEffect(() => {
+    if (contact.name !== savedContactInfo.name || contact.avatar !== savedContactInfo.avatar) {
+      setIsConversationSaved(false);
+    }
+  }, [contact.name, contact.avatar, savedContactInfo]);
+  
+  // Check if current conversation matches any saved conversation (including contact info)
+  useEffect(() => {
+    if (savedConversations.length > 0 && steps.length > 0) {
+      const isSaved = savedConversations.some(saved => 
+        JSON.stringify(saved.steps) === JSON.stringify(steps) &&
+        saved.contact.name === contact.name &&
+        saved.contact.avatar === contact.avatar
+      );
+      setIsConversationSaved(isSaved);
+      
+      if (isSaved) {
+        // Update saved contact info
+        setSavedContactInfo({
+          name: contact.name,
+          avatar: contact.avatar
+        });
+      }
+    }
+  }, [savedConversations, steps, contact.name, contact.avatar]);
+  
   useEffect(() => {
     if (messageType !== 'conversation') {
       setMessageType('conversation');
     }
   }, [messageType, setMessageType]);
+  
+  // Handle loading saved conversation
+  useEffect(() => {
+    if (savedConversations.length > 0) {
+      const currentSavedConversation = savedConversations.find(saved => 
+        JSON.stringify(saved.steps) === JSON.stringify(steps) &&
+        saved.contact.name === contact.name &&
+        saved.contact.avatar === contact.avatar
+      );
+      
+      if (currentSavedConversation) {
+        setSavedContactInfo({
+          name: currentSavedConversation.contact.name,
+          avatar: currentSavedConversation.contact.avatar
+        });
+        setIsConversationSaved(true);
+      }
+    }
+  }, [savedConversations, steps]);
+  
+  const handleSaveConversation = () => {
+    onSaveCurrentConversation();
+    setIsConversationSaved(true);
+    setSavedContactInfo({
+      name: contact.name,
+      avatar: contact.avatar
+    });
+  };
 
   const updateStep = (index: number, updates: Partial<ConversationStep>) => {
     setSteps(steps.map((step, i) => 
@@ -1773,12 +1906,36 @@ const ControlPanel = ({
               
               <ActionBar>
                 <ButtonGroup>
-                  <ActionButton variant="secondary" onClick={() => addStepBySender('them')}>
-                    + Message from {contact.name}
-                  </ActionButton>
-                  <ActionButton variant="secondary" onClick={() => addStepBySender('me')}>
-                    + My Message
-                  </ActionButton>
+                  <DropdownContainer ref={dropdownRef}>
+                    <ActionButton
+                      variant="secondary"
+                      onClick={() => setShowMessageDropdown(!showMessageDropdown)}
+                      onMouseEnter={() => setShowMessageDropdown(true)}
+                    >
+                      + Add a message
+                    </ActionButton>
+                    <DropdownContent isOpen={showMessageDropdown}>
+                      <DropdownItem onClick={() => {
+                        setShowMessageDropdown(false);
+                        addStepBySender('me');
+                      }}>
+                        <User size={16} /> My Message
+                      </DropdownItem>
+                      <DropdownItem onClick={() => {
+                        setShowMessageDropdown(false);
+                        addStepBySender('them');
+                      }}>
+                        <Store size={16} /> Message from Business
+                      </DropdownItem>
+                    </DropdownContent>
+                  </DropdownContainer>
+                  <SaveIconButton 
+                    onClick={handleSaveConversation}
+                    disabled={isConversationSaved}
+                    title={isConversationSaved ? "Conversation already saved" : "Save conversation"}
+                  >
+                    {isConversationSaved ? <Bookmark /> : <Bookmark size={20} />}
+                  </SaveIconButton>
                 </ButtonGroup>
                 <ButtonGroup>
                   <ActionButton 
